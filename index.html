@@ -126,6 +126,16 @@ legend{padding:0;margin-bottom:12px}
 .count{font-family:"Roboto Mono",monospace;font-size:12px;color:var(--muted);border-top:1px solid var(--rule);padding-top:12px}
 
 /* sliders */
+.searchrow{display:flex;gap:6px;margin-bottom:8px}
+#q{flex:1;min-width:0;font-family:Roboto,sans-serif;font-size:13px;padding:6px 9px;
+  border:1px solid var(--rule);border-radius:2px;background:#fff;color:var(--ink)}
+#q:focus{outline:none;border-color:var(--pick)}
+#promote{font-family:Roboto,sans-serif;font-size:12px;font-weight:500;background:var(--ink);color:#fff;
+  border:none;padding:6px 12px;border-radius:2px;cursor:pointer;white-space:nowrap}
+#promote:focus-visible{outline:2px solid var(--pick);outline-offset:1px}
+.tick.hit{border-bottom-width:3px;border-bottom-color:var(--ink);color:var(--ink)}
+.searchmsg{font-size:12.5px;color:var(--muted);margin:0 0 12px;max-width:60ch}
+.searchmsg b{color:var(--ink);font-weight:500}
 .slider{margin-bottom:15px}
 .slider .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:3px}
 .slider .lab b{font-weight:400}
@@ -179,6 +189,17 @@ footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-si
 
 <section class="controls" id="controls" hidden>
   <div>
+    <fieldset>
+      <legend class="eyebrow">Search</legend>
+      <div class="searchrow">
+        <input type="text" id="q" placeholder="Christchurch, blue, 94666" autocomplete="off">
+        <button type="button" id="promote">Make it #1</button>
+      </div>
+      <p class="groupnote">Comma-separated terms, any one can match — town, colour, spec, listing number.
+        Matches are underlined in the strip above; <b>Make it #1</b> nudges the sliders until the best
+        match wins, so the vans just below it are the closest alternatives.</p>
+    </fieldset>
+
     <fieldset>
       <legend class="eyebrow">Must have</legend>
 
@@ -269,6 +290,8 @@ const FEATURES = [
   ['satnav','Sat nav'],
   ['bikerack','Bike rack'],
   ['towbar','Tow bar'],
+  ['cruise','Adaptive cruise control'],
+  ['electricdoor','Power sliding door'],
   ['solar','Solar panel'],
   ['oneowner','One owner from new'],
   ['warranty','Warranty remaining'],
@@ -277,7 +300,8 @@ const FEATURES = [
 const CORE = [
   ['miles','Low mileage'],
   ['year','Newer'],
-  ['price','Low price']
+  ['price','Low price'],
+  ['match','Matches your search']
 ];
 
 const W = {miles:70, year:45, price:55, kitchen:60, fsh:55, cambelt:40, heater:25, awning:20};
@@ -315,7 +339,7 @@ function init(d){
   buildWeights('#coreWeights',CORE);
   buildWeights('#featWeights',FEATURES);
   document.querySelectorAll('.seg input').forEach(i=>i.addEventListener('change',render));
-  resort(); markZeros(); render(); wireTools();
+  resort(); markZeros(); wireSearch(); render(); wireTools();
 }
 
 function buildBoxes(sel,name,vals){
@@ -380,6 +404,7 @@ function passes(v){
 
 const norm=(x,[lo,hi])=> hi===lo?1:(x-lo)/(hi-lo);
 function val(v,k){
+  if(k==='match') return isHit(v)?1:0;
   if(k==='miles') return 1-norm(v.miles,RANGE.miles);
   if(k==='year')  return norm(v.year,RANGE.year);
   if(k==='price') return 1-norm(v.price,RANGE.price);
@@ -392,7 +417,31 @@ function score(v){
   return d? 100*n/d : 0;
 }
 
-let cmpIdx=1, keepCmp=false;
+let cmpIdx=1, keepCmp=false, TERMS=[];
+
+function parseTerms(str){
+  return str.split(",").map(t=>t.trim().toLowerCase()).filter(Boolean);
+}
+
+function haystack(v){
+  return [v.title, v.notes, v.location, v.colour, v.model, v.gen,
+          v.listing_id, v.id, v.url].filter(Boolean).join(" ").toLowerCase();
+}
+
+const isHit = v => TERMS.length && haystack(v).includes(TERMS.find(t=>haystack(v).includes(t)) || "\u0000");
+
+// Which must-haves, if any, are keeping this van off the board?
+function blockingFilters(v){
+  const out=[];
+  if(seg("status")==="hide" && v.status!=="available") out.push(["status","show","sold and wanted adverts"]);
+  const t=seg("trans"); if(t!=="any" && v.trans!==t) out.push(["trans","any","gearbox"]);
+  const b=seg("biturbo");
+  if((b==="exclude" && v.biturbo===true)||(b==="only" && v.biturbo!==true)) out.push(["biturbo","any","twin-turbo"]);
+  const f=seg("fourmotion");
+  if((f==="require" && !v.fourmotion)||(f==="exclude" && v.fourmotion)) out.push(["fourmotion","any","4Motion"]);
+  if(seg("poptop")==="require" && !v.features.includes("poptop")) out.push(["poptop","any","pop-top"]);
+  return out;
+}
 
 function render(){
   const scorable = DATA.vans.filter(v=>v.miles!==null && v.year!==null && v.price!==null);
@@ -440,7 +489,7 @@ function drawRibbon(list){
       '<span class="nowmeta">'+glance(top)+'</span>'+
       '<span class="nowscore">'+list[0].s.toFixed(1)+'</span></div>'+
     '<div class="ticks">'+ list.map((x,i)=>
-      '<button class="tick'+(i===0?' lead':i===cmpIdx?' cmp':'')+'" data-i="'+i+'" '+
+      '<button class="tick'+(i===0?' lead':i===cmpIdx?' cmp':'')+(isHit(x.v)?' hit':'')+'" data-i="'+i+'" '+
       'title="'+tag(x.v)+' '+x.v.title.replace(/"/g,'&quot;')+' — '+
         (x.v.gen||'')+' '+gbp(x.v.price)+' '+x.v.year+' '+mi(x.v.miles)+
         ' — fit '+x.s.toFixed(1)+'">'+pad(i+1)+'</button>').join('')+
@@ -466,7 +515,7 @@ function pickHTML({v,s}){
     '<div class="headline">'+
       f('Price',gbp(v.price))+f('Mileage',v.miles.toLocaleString('en-GB'))+f('Year',v.year)+
       f('Gearbox',v.gearbox)+f('Engine',(v.bhp?v.bhp+'bhp':'—')+(v.biturbo===true?' BiTDI':v.biturbo===null?' (?)':''))+
-      f('Where',v.location)+
+      f('Where', v.location || '—')+
     '</div>'+
     '<p class="notes">'+v.notes+'</p>'+
     '<div class="chips">'+
@@ -514,6 +563,36 @@ function diffChips(a,b){
   return out.length?out.join(''):'<span class="chip">Same kit on both</span>';
 }
 
+// Find weights that put `target` top of `pool`. Scores share a denominator, so
+// target beats v exactly when  w . (val(target) - val(v)) > 0  — a linear feasibility
+// problem, solved by nudging w toward whichever rival is beating it hardest.
+function solveWeights(target, pool){
+  const keys=KEYS(), MARGIN=0.75, eta=4;
+  const w=keys.map(k=>W[k]);
+  const rivals=pool.filter(v=>v!==target);
+  const D=rivals.map(v=>keys.map(k=>val(target,k)-val(v,k)));
+  for(let it=0; it<8000; it++){
+    let worst=-1, wv=MARGIN;
+    for(let i=0;i<D.length;i++){
+      let s=0; for(let j=0;j<keys.length;j++) s+=w[j]*D[i][j];
+      if(s<wv){ wv=s; worst=i; }
+    }
+    if(worst<0){
+      const out={}; keys.forEach((k,j)=>out[k]=Math.round(w[j]));
+      if(!keys.some(k=>out[k]>0)) out.miles=10;
+      return {ok:true, weights:out};
+    }
+    for(let j=0;j<keys.length;j++) w[j]=Math.min(100, Math.max(0, w[j]+eta*D[worst][j]));
+  }
+  // couldn't be done: name whoever is beating it on every count that matters
+  let blocker=null, best=-1e9;
+  for(const v of rivals){
+    const m=Math.min(...keys.filter(k=>W[k]>0).map(k=>val(v,k)-val(target,k)));
+    if(m>best){ best=m; blocker=v; }
+  }
+  return {ok:false, blocker};
+}
+
 function clearNotches(){ document.querySelectorAll('.notch').forEach(n=>n.classList.remove('show')); }
 
 // For weight k: scores share a denominator, so van B wins when
@@ -538,12 +617,99 @@ function drawNotches(a,b){
   }
 }
 
+function wireSearch(){
+  const q=$("#q");
+  q.addEventListener("input",()=>{ TERMS=parseTerms(q.value); render(); });
+  $("#q").setAttribute("aria-describedby","searchmsg");
+  q.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); promote(); }});
+  $("#promote").addEventListener("click",promote);
+}
+
+function searchSay(html){
+  let el=$("#searchmsg");
+  if(!el){ el=document.createElement("p"); el.className="searchmsg"; el.id="searchmsg";
+           $("#q").closest("fieldset").appendChild(el); }
+  el.innerHTML=html;
+}
+
+function promote(){
+  TERMS=parseTerms($("#q").value);
+  if(!TERMS.length){ searchSay("Type a term first — a town, a colour, a spec, or a listing number."); return; }
+
+  const scorable=DATA.vans.filter(v=>v.miles!==null && v.year!==null && v.price!==null);
+  const hits=scorable.filter(isHit);
+  if(!hits.length){
+    searchSay("Nothing matches <b>"+TERMS.join(", ")+"</b>. Try a town, a colour, "+
+              "a model like Ocean or Beach, or a listing number.");
+    render(); return;
+  }
+
+  const ranked=hits.slice().sort((a,b)=>score(b)-score(a));
+  let target=ranked[0], res=null;
+  let note="";
+
+  const blocked=blockingFilters(target);
+  if(blocked.length){
+    blocked.forEach(([name,value])=>{
+      const el=document.querySelector('input[name="'+name+'"][value="'+value+'"]');
+      if(el) el.checked=true;
+    });
+    note+="Relaxed "+blocked.map(b=>"<b>"+b[2]+"</b>").join(" and ")+" so it could appear. ";
+  }
+  if(target.price>LIMITS.maxPrice || target.miles>LIMITS.maxMiles || target.year<LIMITS.minYear){
+    if(target.price>LIMITS.maxPrice) setLimit("maxPrice", target.price);
+    if(target.miles>LIMITS.maxMiles) setLimit("maxMiles", target.miles);
+    if(target.year<LIMITS.minYear)   setLimit("minYear",  target.year);
+    note+="Widened the cut-offs to reach it. ";
+  }
+
+  const pool=scorable.filter(passes);
+  const before={...W};
+  for(const cand of ranked){            // some matches are simply beaten outright
+    if(!pool.includes(cand)) continue;
+    const r=solveWeights(cand, pool);
+    if(r.ok){ target=cand; res=r; break; }
+    if(!res) res=r;
+  }
+
+  if(!res || !res.ok){
+    render();
+    const rank=pool.map(v=>({v,s:score(v)})).sort((a,b)=>b.s-a.s).findIndex(x=>x.v===target)+1;
+    searchSay(note+"Can't make "+tag(target)+" <b>"+target.title+"</b> the winner with sliders alone — "+
+      tag(res.blocker)+" <b>"+res.blocker.title+"</b> beats it on everything you're weighting. "+
+      "It's sitting at #"+rank+". Tighten a cut-off to rule the other one out.");
+    return;
+  }
+
+  Object.entries(res.weights).forEach(([k,v])=>{
+    W[k]=v;
+    const el=document.getElementById("w-"+k);
+    if(el){ el.value=v; document.getElementById("wv-"+k).textContent=v; }
+  });
+  resort(); markZeros(); render();
+
+  const moved=KEYS().filter(k=>res.weights[k]!==before[k])
+    .map(k=>({k, d:Math.abs(res.weights[k]-before[k])}))
+    .sort((a,b)=>b.d-a.d).slice(0,3)
+    .map(x=>{ const label=[...CORE,...FEATURES].find(f=>f[0]===x.k)[1];
+              return "<b>"+label+"</b> "+before[x.k]+"→"+res.weights[x.k]; });
+  searchSay(note+tag(target)+" <b>"+target.title+"</b> is now #1"+
+    (moved.length? " — moved "+moved.join(", ")+"." : ".")+
+    " The vans below it are the closest things to it under these settings.");
+}
+
+function setLimit(k,val){
+  const el=document.getElementById("lim-"+k);
+  if(el){ el.value=val; el.dispatchEvent(new Event("input")); }
+}
+
 // ---- saving and restoring a set of settings ----------------------------
 function collectState(){
   return {
     app:"california-picker", v:1, saved:new Date().toISOString().slice(0,10),
     weights:{...W}, limits:{...LIMITS},
     seg:Object.fromEntries(["trans","biturbo","fourmotion","poptop","status"].map(n=>[n,seg(n)])),
+    search:$("#q").value,
     gen:checked("gen"), model:checked("model")
   };
 }
@@ -568,7 +734,7 @@ function applyState(st){
     if(!Array.isArray(vals)) return;
     document.querySelectorAll('input[name="'+name+'"]').forEach(b=>{ b.checked=vals.includes(b.value); });
   });
-  resort(); markZeros(); render(); wireTools();
+  resort(); markZeros(); wireSearch(); render(); wireTools();
 }
 
 function settingsLink(){
