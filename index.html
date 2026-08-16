@@ -167,6 +167,7 @@ footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-si
   <div class="tools" id="tools" hidden>
     <button type="button" id="save">Save these settings</button>
     <button type="button" id="load">Load settings</button>
+    <button type="button" id="share">Share these filters</button>
     <input type="file" id="loadFile" accept="application/json,.json" hidden>
     <span class="toolmsg" id="toolmsg"></span>
   </div>
@@ -570,6 +571,12 @@ function applyState(st){
   resort(); markZeros(); render(); wireTools();
 }
 
+function settingsLink(){
+  const url=new URL(location.href);
+  url.hash="s="+encodeURIComponent(JSON.stringify(collectState()));
+  return url.toString();
+}
+
 function say(msg){
   const el=$("#toolmsg"); el.textContent=msg;
   clearTimeout(say._t); say._t=setTimeout(()=>{ el.textContent=""; }, 4000);
@@ -586,8 +593,23 @@ function wireTools(){
     a.download="van-picker-settings-"+st.saved+".json";
     a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-    history.replaceState(null,"","#s="+encodeURIComponent(JSON.stringify(st)));
+    history.replaceState(null,"",new URL(settingsLink()).hash);
     say("Saved. The address bar now holds these settings too — bookmark it.");
+  });
+
+  $("#share").addEventListener("click",async ()=>{
+    const link=settingsLink();
+    history.replaceState(null,"",new URL(link).hash);
+    if(navigator.share){
+      try{ await navigator.share({title:"California picker — my filters", url:link}); return; }
+      catch(err){ if(err.name==="AbortError") return; }   // they closed the share sheet
+    }
+    try{
+      await navigator.clipboard.writeText(link);
+      say("Link copied — opens with your filters already set.");
+    }catch(err){
+      window.prompt("Copy this link:", link);
+    }
   });
 
   $("#load").addEventListener("click",()=>$("#loadFile").click());
