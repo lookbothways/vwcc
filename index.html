@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>California picker</title>
+<title>The VW Deplethoraiser</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -162,7 +162,7 @@ footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-si
 
 <header>
   <div class="eyebrow">VW California Club classifieds</div>
-  <h1>Which one, on your terms</h1>
+  <h1>The VW Deplethoraiser</h1>
   <p class="sub" id="meta">Loading…</p>
   <div class="tools" id="tools" hidden>
     <button type="button" id="save">Save these settings</button>
@@ -201,12 +201,6 @@ footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-si
         <label><input type="radio" name="fourmotion" value="any" checked><span>Any</span></label>
         <label><input type="radio" name="fourmotion" value="require"><span>Require</span></label>
         <label><input type="radio" name="fourmotion" value="exclude"><span>Exclude</span></label>
-      </div>
-
-      <div class="lab" style="font-size:13px;margin-bottom:4px">Pop-top roof</div>
-      <div class="seg" data-seg="poptop">
-        <label><input type="radio" name="poptop" value="any" checked><span>Any</span></label>
-        <label><input type="radio" name="poptop" value="require"><span>Require</span></label>
       </div>
 
       <div class="lab" style="font-size:13px;margin-bottom:4px">Sold &amp; wanted adverts</div>
@@ -282,7 +276,7 @@ const CORE = [
   ['price','Low price']
 ];
 
-const W = {miles:70, year:45, price:55, kitchen:60, fsh:55, cambelt:40, heater:25, awning:20};
+const W = {miles:70, year:45, price:55, kitchen:100, fsh:83, cambelt:40, heater:25, awning:20, reversecam:85, parksensors:85, swivelseats:80, cruise:65, electricroof:60};
 FEATURES.forEach(([k])=>{ if(!(k in W)) W[k]=0; });
 
 let DATA=null, RANGE={}, LIMITS={};
@@ -306,13 +300,13 @@ function init(d){
   RANGE.miles=[Math.min(...v.map(x=>x.miles)), Math.max(...v.map(x=>x.miles))];
   RANGE.year =[Math.min(...v.map(x=>x.year )), Math.max(...v.map(x=>x.year ))];
   RANGE.price=[Math.min(...v.map(x=>x.price)), Math.max(...v.map(x=>x.price))];
-  LIMITS={maxMiles:RANGE.miles[1], maxPrice:RANGE.price[1], minYear:RANGE.year[0]};
+  LIMITS={maxMiles:100000, maxPrice:35000, minYear:RANGE.year[0]};
 
   $('#meta').innerHTML='Scanned '+d.scanned+' · '+v.length+' adverts · <a href="'+d.source+'" target="_blank" rel="noopener">open the classifieds</a>';
   $('#controls').hidden=false;
 
-  buildBoxes('#gens','gen',['T4','T5','T5.1','T6','T6.1']);
-  buildBoxes('#models','model',['SE','Ocean','Beach','Coast','Grand California','Westfalia','Conversion']);
+  buildBoxes('#gens','gen',['T4','T5','T5.1','T6','T6.1'], ['T4','T6.1']);
+  buildBoxes('#models','model',['SE','Ocean','Beach','Coast','Grand California','Westfalia','Conversion'], ['Beach','Conversion']);
   buildLimits();
   buildWeights('#coreWeights',CORE);
   buildWeights('#featWeights',FEATURES);
@@ -320,9 +314,9 @@ function init(d){
   resort(); markZeros(); render(); wireTools();
 }
 
-function buildBoxes(sel,name,vals){
+function buildBoxes(sel,name,vals,off=[]){
   $(sel).innerHTML = vals.map(v=>
-    '<label><input type="checkbox" name="'+name+'" value="'+v+'" checked>'+v+'</label>').join('');
+    '<label><input type="checkbox" name="'+name+'" value="'+v+'" '+(off.includes(v)?'':'checked')+'>'+v+'</label>').join('');
   $(sel).addEventListener('change',render);
 }
 
@@ -373,7 +367,6 @@ function passes(v){
   const f=seg('fourmotion');
   if(f==='require' && !v.fourmotion) return false;
   if(f==='exclude' && v.fourmotion) return false;
-  if(seg('poptop')==='require' && !v.features.includes('poptop')) return false;
   if(!checked('gen').includes(v.gen)) return false;
   if(!checked('model').includes(v.model)) return false;
   if(v.price>LIMITS.maxPrice || v.miles>LIMITS.maxMiles || v.year<LIMITS.minYear) return false;
@@ -548,7 +541,7 @@ function collectState(){
   return {
     app:"california-picker", v:1, saved:new Date().toISOString().slice(0,10),
     weights:{...W}, limits:{...LIMITS},
-    seg:Object.fromEntries(["trans","biturbo","fourmotion","poptop","status"].map(n=>[n,seg(n)])),
+    seg:Object.fromEntries(["trans","biturbo","fourmotion","status"].map(n=>[n,seg(n)])),
     gen:checked("gen"), model:checked("model")
   };
 }
