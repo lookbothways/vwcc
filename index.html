@@ -36,6 +36,27 @@ h1{font-weight:900;font-size:30px;letter-spacing:-.024em;line-height:1.05}
 .sub a{color:var(--ink)}
 .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
 
+/* sticky rank ribbon */
+.ribbon{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--rule);
+  padding:9px 0 8px;margin-bottom:22px}
+.ribbon .now{display:flex;align-items:baseline;gap:10px;min-width:0}
+.ribbon .rank{font-family:"Roboto Mono",monospace;font-weight:500;font-size:19px;color:var(--pick);letter-spacing:-.02em}
+.ribbon .nowname{font-weight:700;font-size:15px;letter-spacing:-.012em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.ribbon .nowscore{font-family:"Roboto Mono",monospace;font-size:13px;color:var(--muted)}
+.ticks{display:flex;gap:3px;margin-top:7px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.ticks::-webkit-scrollbar{display:none}
+.tick{flex:0 0 auto;font-family:"Roboto Mono",monospace;font-size:10.5px;line-height:1;
+  padding:4px 5px;border:1px solid var(--rule);border-radius:2px;background:#fff;color:var(--faint);cursor:pointer}
+.tick.lead{border-color:var(--pick);color:var(--pick);font-weight:500;cursor:default}
+.tick.cmp{border-color:var(--ghost);color:var(--ghost);font-weight:500}
+.tick:focus-visible{outline:2px solid var(--pick);outline-offset:1px}
+
+/* thumbnails */
+.thumbs{display:flex;gap:6px;margin-top:14px;overflow-x:auto;scrollbar-width:none}
+.thumbs::-webkit-scrollbar{display:none}
+.thumbs img{flex:0 0 auto;width:104px;height:74px;object-fit:cover;border:1px solid var(--rule);border-radius:2px;background:var(--wash)}
+.nothumbs{margin-top:12px;font-size:12px;color:var(--faint)}
+
 /* pick */
 .pick{border:1px solid var(--rule);border-top:3px solid var(--pick);padding:26px 26px 22px}
 .pick .eyebrow{color:var(--pick)}
@@ -128,6 +149,8 @@ footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-si
   <h1>Which one, on your terms</h1>
   <p class="sub" id="meta">Loading…</p>
 </header>
+
+<div class="ribbon" id="ribbon" hidden></div>
 
 <main id="result"></main>
 
@@ -346,27 +369,56 @@ function score(v){
   return d? 100*n/d : 0;
 }
 
+let cmpIdx=1, keepCmp=false;
+
 function render(){
-  const list = DATA.vans.filter(passes).map(v=>({v,s:score(v)}))
+  const scorable = DATA.vans.filter(v=>v.miles!==null && v.year!==null);
+  const missing  = DATA.vans.length - scorable.length;
+  const list = scorable.filter(passes).map(v=>({v,s:score(v)}))
     .sort((a,b)=> b.s-a.s || a.v.price-b.v.price);
-  $('#count').textContent = list.length+' of '+DATA.vans.length+' adverts pass the filters';
+  $('#count').textContent = list.length+' of '+DATA.vans.length+' adverts pass the filters'+
+    (missing? ' · '+missing+' can\'t be ranked yet (missing year or mileage)':'');
 
   if(!list.length){
+    $('#ribbon').hidden=true;
     $('#result').innerHTML='<div class="empty"><h2>Nothing passes</h2><p class="notes">The cut-offs and must-haves rule out every advert. Loosen one and it\'ll come back.</p></div>';
     clearNotches(); return;
   }
-  const best=list[0], second=list[1];
-  $('#result').innerHTML = pickHTML(best) + (second? runnerHTML(best,second):'');
-  if(second){
+  if(!keepCmp) cmpIdx=1;
+  keepCmp=false;
+  if(cmpIdx>=list.length) cmpIdx=1;
+
+  drawRibbon(list);
+  const best=list[0], rival=list[cmpIdx];
+  $('#result').innerHTML = pickHTML(best) + (rival? runnerHTML(best,rival,cmpIdx+1):'');
+  if(rival){
     const btn=$('#flip');
     btn.addEventListener('click',()=>{
       const open=$('#diff').classList.toggle('open');
       btn.setAttribute('aria-expanded',open);
       btn.textContent = open? 'Hide the difference' : 'What would flip it';
-      open? drawNotches(best.v,second.v) : clearNotches();
+      open? drawNotches(best.v,rival.v) : clearNotches();
     });
   }
   clearNotches();
+}
+
+const pad=n=>String(n).padStart(2,'0');
+
+function drawRibbon(list){
+  const r=$('#ribbon'); r.hidden=false;
+  r.innerHTML =
+    '<div class="now"><span class="rank">'+pad(1)+'</span>'+
+      '<span class="nowname">'+list[0].v.title+'</span>'+
+      '<span class="nowscore">'+list[0].s.toFixed(1)+'</span></div>'+
+    '<div class="ticks">'+ list.map((x,i)=>
+      '<button class="tick'+(i===0?' lead':i===cmpIdx?' cmp':'')+'" data-i="'+i+'" '+
+      'title="'+x.v.title.replace(/"/g,'&quot;')+' — fit '+x.s.toFixed(1)+'">'+pad(i+1)+'</button>').join('')+
+    '</div>';
+  r.querySelectorAll('.tick').forEach(b=>b.addEventListener('click',()=>{
+    const i=+b.dataset.i; if(i===0) return;
+    cmpIdx=i; keepCmp=true; render();
+  }));
 }
 
 function pickHTML({v,s}){
@@ -374,6 +426,9 @@ function pickHTML({v,s}){
   return '<div class="pick">'+
     '<div class="score"><b>'+s.toFixed(1)+'</b><span class="eyebrow">fit</span></div>'+
     '<div class="eyebrow">Best fit</div><h2>'+v.title+'</h2>'+
+    (v.images && v.images.length
+      ? '<div class="thumbs">'+v.images.map(src=>'<img src="'+src+'" alt="" loading="lazy">').join('')+'</div>'
+      : '<p class="nothumbs">No photos in the data for this advert yet.</p>')+
     '<div class="headline">'+
       f('Price',gbp(v.price))+f('Mileage',v.miles.toLocaleString('en-GB'))+f('Year',v.year)+
       f('Gearbox',v.gearbox)+f('Engine',(v.bhp?v.bhp+'bhp':'—')+(v.biturbo===true?' BiTDI':v.biturbo===null?' (?)':''))+
@@ -385,15 +440,16 @@ function pickHTML({v,s}){
       (v.fourmotion?'<span class="chip on">4Motion</span>':'')+
       feats.map(([,l])=>'<span class="chip">'+l+'</span>').join('')+
     '</div>'+
-    '<a class="go" href="'+DATA.source+'" target="_blank" rel="noopener">Find this advert on the classifieds page</a>'+
+    '<a class="go" href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">'+
+      (v.url?'Open this advert':'Find this advert on the classifieds page')+'</a>'+
   '</div>';
 }
 const f=(l,v)=>'<div><span>'+l+'</span><b>'+v+'</b></div>';
 
-function runnerHTML(best,second){
+function runnerHTML(best,second,rank){
   const v=second.v;
   return '<div class="runner">'+
-    '<div class="row"><span class="eyebrow">Runner-up</span>'+
+    '<div class="row"><span class="eyebrow">Compared with '+pad(rank)+(rank===2?' (runner-up)':'')+'</span>'+
       '<h3>'+v.title+'</h3>'+
       '<span class="meta">'+gbp(v.price)+' · '+mi(v.miles)+' · '+v.year+' · '+v.location+' · fit '+second.s.toFixed(1)+'</span>'+
       '<button class="flip" id="flip" aria-expanded="false" aria-controls="diff">What would flip it</button>'+
