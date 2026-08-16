@@ -34,6 +34,12 @@ header{border-bottom:1px solid var(--rule);padding:34px 0 18px;margin-bottom:28p
 h1{font-weight:900;font-size:30px;letter-spacing:-.024em;line-height:1.05}
 .sub{color:var(--muted);font-size:13px;margin-top:8px}
 .sub a{color:var(--ink)}
+.tools{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.tools button{font-family:Roboto,sans-serif;font-size:12px;font-weight:500;letter-spacing:.02em;
+  background:#fff;border:1px solid var(--rule);color:var(--ink);padding:5px 11px;border-radius:2px;cursor:pointer}
+.tools button:hover{border-color:var(--ink)}
+.tools button:focus-visible{outline:2px solid var(--pick);outline-offset:1px}
+.toolmsg{font-family:"Roboto Mono",monospace;font-size:11.5px;color:var(--muted)}
 .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
 
 /* sticky rank ribbon */
@@ -81,6 +87,8 @@ h1{font-weight:900;font-size:30px;letter-spacing:-.024em;line-height:1.05}
 .chip.on{border-color:var(--ink);color:var(--ink)}
 .chip.add{border-color:var(--ghost);color:var(--ghost)}
 .chip.lose{border-color:var(--rule);color:var(--faint);text-decoration:line-through}
+.go.small{margin-top:0;font-size:12px}
+.thumbs{text-decoration:none}
 .go{display:inline-block;margin-top:20px;font-size:13px;font-weight:500;color:var(--pick);text-decoration:none;border-bottom:1px solid currentColor;padding-bottom:1px}
 
 /* runner up */
@@ -156,6 +164,12 @@ footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-si
   <div class="eyebrow">VW California Club classifieds</div>
   <h1>Which one, on your terms</h1>
   <p class="sub" id="meta">Loading…</p>
+  <div class="tools" id="tools" hidden>
+    <button type="button" id="save">Save these settings</button>
+    <button type="button" id="load">Load settings</button>
+    <input type="file" id="loadFile" accept="application/json,.json" hidden>
+    <span class="toolmsg" id="toolmsg"></span>
+  </div>
 </header>
 
 <div class="ribbon" id="ribbon" hidden></div>
@@ -300,7 +314,7 @@ function init(d){
   buildWeights('#coreWeights',CORE);
   buildWeights('#featWeights',FEATURES);
   document.querySelectorAll('.seg input').forEach(i=>i.addEventListener('change',render));
-  resort(); markZeros(); render();
+  resort(); markZeros(); render(); wireTools();
 }
 
 function buildBoxes(sel,name,vals){
@@ -442,11 +456,11 @@ function pickHTML({v,s}){
     '<div class="score"><b>'+s.toFixed(1)+'</b><span class="eyebrow">fit</span></div>'+
     '<div class="eyebrow">Best fit &nbsp;'+tag(v)+'</div><h2>'+v.title+'</h2>'+
     (v.images && v.images.length
-      ? '<div class="thumbs">'+v.images.map((src,i)=>{
+      ? '<a class="thumbs" href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">'+v.images.map((src,i)=>{
           const t=(v.thumbs&&v.thumbs[i])||src;
           return '<img src="'+t+'" data-full="'+src+'" alt="" loading="lazy" '+
                  'onerror="if(this.src!==this.dataset.full)this.src=this.dataset.full">';
-        }).join('')+'</div>'
+        }).join('')+'</a>'
       : '<p class="nothumbs">No photos in the data for this advert yet.</p>')+
     '<div class="headline">'+
       f('Price',gbp(v.price))+f('Mileage',v.miles.toLocaleString('en-GB'))+f('Year',v.year)+
@@ -471,6 +485,7 @@ function runnerHTML(best,second,rank){
     '<div class="row"><span class="eyebrow">Compared with '+pad(rank)+(rank===2?' (runner-up)':'')+'</span>'+
       '<h3><span class="sitenum">'+tag(v)+'</span> '+v.title+'</h3>'+
       '<span class="meta">'+gbp(v.price)+' · '+mi(v.miles)+' · '+v.year+' · '+v.location+' · fit '+second.s.toFixed(1)+'</span>'+
+      '<a class="go small" href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">Open advert</a>'+
       '<button class="flip" id="flip" aria-expanded="false" aria-controls="diff">What would flip it</button>'+
     '</div>'+
     '<div class="diff" id="diff"><p>Dashed marks have appeared on the sliders below. Each one is the point where that single slider, on its own, hands the win to this van — the arrow shows which way to drag. Sliders with no mark can\'t change the outcome by themselves.</p>'+
@@ -519,6 +534,78 @@ function drawNotches(a,b){
     el.style.left='calc(var(--thumb)/2 + '+target+'% - (var(--thumb) * '+(target/100)+'))';
     el.dataset.dir = dv>0 ? '▸'+target : target+'◂';
     el.classList.add('show');
+  }
+}
+
+// ---- saving and restoring a set of settings ----------------------------
+function collectState(){
+  return {
+    app:"california-picker", v:1, saved:new Date().toISOString().slice(0,10),
+    weights:{...W}, limits:{...LIMITS},
+    seg:Object.fromEntries(["trans","biturbo","fourmotion","poptop","status"].map(n=>[n,seg(n)])),
+    gen:checked("gen"), model:checked("model")
+  };
+}
+
+function applyState(st){
+  if(!st || typeof st!=="object" || !st.weights) throw new Error("not a settings file");
+  Object.entries(st.weights).forEach(([k,val])=>{
+    if(!(k in W)) return;
+    W[k]=+val;
+    const el=document.getElementById("w-"+k);
+    if(el){ el.value=W[k]; document.getElementById("wv-"+k).textContent=W[k]; }
+  });
+  Object.entries(st.limits||{}).forEach(([k,val])=>{
+    const el=document.getElementById("lim-"+k);
+    if(el){ el.value=val; el.dispatchEvent(new Event("input")); }
+  });
+  Object.entries(st.seg||{}).forEach(([name,val])=>{
+    const el=document.querySelector('input[name="'+name+'"][value="'+val+'"]');
+    if(el) el.checked=true;
+  });
+  [["gen",st.gen],["model",st.model]].forEach(([name,vals])=>{
+    if(!Array.isArray(vals)) return;
+    document.querySelectorAll('input[name="'+name+'"]').forEach(b=>{ b.checked=vals.includes(b.value); });
+  });
+  resort(); markZeros(); render(); wireTools();
+}
+
+function say(msg){
+  const el=$("#toolmsg"); el.textContent=msg;
+  clearTimeout(say._t); say._t=setTimeout(()=>{ el.textContent=""; }, 4000);
+}
+
+function wireTools(){
+  $("#tools").hidden=false;
+
+  $("#save").addEventListener("click",()=>{
+    const st=collectState();
+    const json=JSON.stringify(st,null,2);
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([json],{type:"application/json"}));
+    a.download="van-picker-settings-"+st.saved+".json";
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    history.replaceState(null,"","#s="+encodeURIComponent(JSON.stringify(st)));
+    say("Saved. The address bar now holds these settings too — bookmark it.");
+  });
+
+  $("#load").addEventListener("click",()=>$("#loadFile").click());
+  $("#loadFile").addEventListener("change",e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{ applyState(JSON.parse(r.result)); say("Loaded "+f.name); }
+      catch(err){ say("That file isn't a settings file."); }
+    };
+    r.onerror=()=>say("Couldn't read that file.");
+    r.readAsText(f);
+    e.target.value="";
+  });
+
+  if(location.hash.startsWith("#s=")){
+    try{ applyState(JSON.parse(decodeURIComponent(location.hash.slice(3)))); say("Settings restored from the link."); }
+    catch(err){ say("The settings in that link couldn't be read."); }
   }
 }
 
