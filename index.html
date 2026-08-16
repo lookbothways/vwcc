@@ -427,7 +427,11 @@ function pickHTML({v,s}){
     '<div class="score"><b>'+s.toFixed(1)+'</b><span class="eyebrow">fit</span></div>'+
     '<div class="eyebrow">Best fit</div><h2>'+v.title+'</h2>'+
     (v.images && v.images.length
-      ? '<div class="thumbs">'+v.images.map(src=>'<img src="'+src+'" alt="" loading="lazy">').join('')+'</div>'
+      ? '<div class="thumbs">'+v.images.map((src,i)=>{
+          const t=(v.thumbs&&v.thumbs[i])||src;
+          return '<img src="'+t+'" data-full="'+src+'" alt="" loading="lazy" '+
+                 'onerror="if(this.src!==this.dataset.full)this.src=this.dataset.full">';
+        }).join('')+'</div>'
       : '<p class="nothumbs">No photos in the data for this advert yet.</p>')+
     '<div class="headline">'+
       f('Price',gbp(v.price))+f('Mileage',v.miles.toLocaleString('en-GB'))+f('Year',v.year)+
