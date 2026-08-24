@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The VW Deplethoraiser</title>
+<title>California picker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -144,6 +144,23 @@ input[type=range].zero::-moz-range-thumb{background:#fff;border:1.5px solid var(
 .notch.show{display:block}
 .groupnote{font-size:12px;color:var(--faint);margin:-4px 0 14px}
 
+.newly{margin-top:52px;border-top:1px solid var(--rule);padding-top:20px}
+.newly h2{font-weight:700;font-size:19px;letter-spacing:-.018em;margin-bottom:4px}
+.newly .lede{color:var(--muted);font-size:13px;margin:0 0 16px;max-width:64ch}
+.newrow{display:flex;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.newrow .place{font-family:"Roboto Mono",monospace;font-size:12px;color:var(--faint);min-width:58px}
+.newrow a{font-weight:500;font-size:14px;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule)}
+.newrow a:hover{border-bottom-color:var(--ink)}
+.newrow .glance{font-family:"Roboto Mono",monospace;font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
+.excluded{margin-top:12px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.excluded .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:700;width:100%}
+.excluded button{font-family:"Roboto Mono",monospace;font-size:11px;border:1px solid var(--rule);
+  background:#fff;color:var(--muted);padding:3px 7px;border-radius:2px;cursor:pointer}
+.excluded button:hover{border-color:var(--ink);color:var(--ink)}
+.exbtn{margin-top:20px;margin-left:14px;background:none;border:none;color:var(--muted);
+  font-family:Roboto,sans-serif;font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0}
+.exbtn:hover{color:var(--ink)}
+@media (max-width:640px){ .newrow .glance{margin-left:0;flex:1 1 100%} }
 footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-size:12px;color:var(--faint)}
 .empty{border:1px solid var(--rule);padding:30px 26px}
 .empty h2{font-weight:700;font-size:19px;margin-bottom:8px}
@@ -162,7 +179,7 @@ footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-si
 
 <header>
   <div class="eyebrow">VW California Club classifieds</div>
-  <h1>The VW Deplethoraiser</h1>
+  <h1>Which one, on your terms</h1>
   <p class="sub" id="meta">Loading…</p>
   <div class="tools" id="tools" hidden>
     <button type="button" id="save">Save these settings</button>
@@ -203,6 +220,12 @@ footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-si
         <label><input type="radio" name="fourmotion" value="exclude"><span>Exclude</span></label>
       </div>
 
+      <div class="lab" style="font-size:13px;margin-bottom:4px">Pop-top roof</div>
+      <div class="seg" data-seg="poptop">
+        <label><input type="radio" name="poptop" value="any" checked><span>Any</span></label>
+        <label><input type="radio" name="poptop" value="require"><span>Require</span></label>
+      </div>
+
       <div class="lab" style="font-size:13px;margin-bottom:4px">Sold &amp; wanted adverts</div>
       <div class="seg" data-seg="status">
         <label><input type="radio" name="status" value="hide" checked><span>Hide</span></label>
@@ -226,6 +249,7 @@ footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-si
     </fieldset>
 
     <div class="count" id="count"></div>
+    <div class="excluded" id="excluded"></div>
   </div>
 
   <div>
@@ -241,6 +265,8 @@ footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-si
     </fieldset>
   </div>
 </section>
+
+<section class="newly" id="newly" hidden></section>
 
 <footer>
   Advert text scanned from vwcaliforniaclub.com. Prices and mileages are as written by the sellers, not verified.
@@ -276,7 +302,7 @@ const CORE = [
   ['price','Low price']
 ];
 
-const W = {miles:70, year:45, price:55, kitchen:100, fsh:83, cambelt:40, heater:25, awning:20, reversecam:85, parksensors:85, swivelseats:80, cruise:65, electricroof:60};
+const W = {miles:70, year:45, price:55, kitchen:60, fsh:55, cambelt:40, heater:25, awning:20};
 FEATURES.forEach(([k])=>{ if(!(k in W)) W[k]=0; });
 
 let DATA=null, RANGE={}, LIMITS={};
@@ -300,13 +326,13 @@ function init(d){
   RANGE.miles=[Math.min(...v.map(x=>x.miles)), Math.max(...v.map(x=>x.miles))];
   RANGE.year =[Math.min(...v.map(x=>x.year )), Math.max(...v.map(x=>x.year ))];
   RANGE.price=[Math.min(...v.map(x=>x.price)), Math.max(...v.map(x=>x.price))];
-  LIMITS={maxMiles:100000, maxPrice:35000, minYear:RANGE.year[0]};
+  LIMITS={maxMiles:RANGE.miles[1], maxPrice:RANGE.price[1], minYear:RANGE.year[0]};
 
   $('#meta').innerHTML='Scanned '+d.scanned+' · '+v.length+' adverts · <a href="'+d.source+'" target="_blank" rel="noopener">open the classifieds</a>';
   $('#controls').hidden=false;
 
-  buildBoxes('#gens','gen',['T4','T5','T5.1','T6','T6.1'], ['T4','T6.1']);
-  buildBoxes('#models','model',['SE','Ocean','Beach','Coast','Grand California','Westfalia','Conversion'], ['Beach','Conversion']);
+  buildBoxes('#gens','gen',['T4','T5','T5.1','T6','T6.1']);
+  buildBoxes('#models','model',['SE','Ocean','Beach','Coast','Grand California','Westfalia','Conversion']);
   buildLimits();
   buildWeights('#coreWeights',CORE);
   buildWeights('#featWeights',FEATURES);
@@ -314,9 +340,9 @@ function init(d){
   resort(); markZeros(); render(); wireTools();
 }
 
-function buildBoxes(sel,name,vals,off=[]){
+function buildBoxes(sel,name,vals){
   $(sel).innerHTML = vals.map(v=>
-    '<label><input type="checkbox" name="'+name+'" value="'+v+'" '+(off.includes(v)?'':'checked')+'>'+v+'</label>').join('');
+    '<label><input type="checkbox" name="'+name+'" value="'+v+'" checked>'+v+'</label>').join('');
   $(sel).addEventListener('change',render);
 }
 
@@ -359,6 +385,7 @@ const checked = name => [...document.querySelectorAll('input[name="'+name+'"]:ch
 const seg = name => document.querySelector('input[name="'+name+'"]:checked').value;
 
 function passes(v){
+  if(EXCLUDED.has(vanKey(v))) return false;
   if(seg('status')==='hide' && v.status!=='available') return false;
   const t=seg('trans'); if(t!=='any' && v.trans!==t) return false;
   const b=seg('biturbo');
@@ -367,6 +394,7 @@ function passes(v){
   const f=seg('fourmotion');
   if(f==='require' && !v.fourmotion) return false;
   if(f==='exclude' && v.fourmotion) return false;
+  if(seg('poptop')==='require' && !v.features.includes('poptop')) return false;
   if(!checked('gen').includes(v.gen)) return false;
   if(!checked('model').includes(v.model)) return false;
   if(v.price>LIMITS.maxPrice || v.miles>LIMITS.maxMiles || v.year<LIMITS.minYear) return false;
@@ -389,6 +417,31 @@ function score(v){
 
 let cmpIdx=1, keepCmp=false;
 
+// ---- exclusions, remembered per browser --------------------------------
+const STORE="vanpicker.excluded";
+const vanKey = v => String(v.listing_id || v.url || v.id);
+let EXCLUDED = (()=>{ try{ return new Set(JSON.parse(localStorage.getItem(STORE)||"[]")); }
+                      catch(e){ return new Set(); } })();
+function persistExcluded(){
+  try{ localStorage.setItem(STORE, JSON.stringify([...EXCLUDED])); }
+  catch(e){ /* private mode or storage disabled — keeps working for this session */ }
+}
+function exclude(v){ EXCLUDED.add(vanKey(v)); persistExcluded(); render(); }
+function unexclude(key){ EXCLUDED.delete(key); persistExcluded(); render(); }
+
+function drawExcluded(){
+  const box=$("#excluded");
+  if(!EXCLUDED.size){ box.innerHTML=""; return; }
+  const named=[...EXCLUDED].map(k=>{
+    const v=DATA.vans.find(x=>vanKey(x)===k);
+    return {k, label:v? (v.listing_id? "["+v.listing_id+"] ":"")+v.title.replace(/^VW /,"") : k};
+  });
+  box.innerHTML='<span class="lbl">Excluded — click to restore</span>'+
+    named.map(n=>'<button type="button" data-k="'+n.k+'">'+n.label+' ×</button>').join('');
+  box.querySelectorAll("button").forEach(b=>
+    b.addEventListener("click",()=>unexclude(b.dataset.k)));
+}
+
 function render(){
   const scorable = DATA.vans.filter(v=>v.miles!==null && v.year!==null && v.price!==null);
   const missing  = DATA.vans.length - scorable.length;
@@ -399,6 +452,7 @@ function render(){
 
   if(!list.length){
     $('#ribbon').hidden=true;
+    drawExcluded(); drawNewly();
     $('#result').innerHTML='<div class="empty"><h2>Nothing passes</h2><p class="notes">The cut-offs and must-haves rule out every advert. Loosen one and it\'ll come back.</p></div>';
     clearNotches(); return;
   }
@@ -407,8 +461,12 @@ function render(){
   if(cmpIdx>=list.length) cmpIdx=1;
 
   drawRibbon(list);
+  drawExcluded();
+  drawNewly();
   const best=list[0], rival=list[cmpIdx];
   $('#result').innerHTML = pickHTML(best) + (rival? runnerHTML(best,rival,cmpIdx+1):'');
+  const ex=$('#exbtn');
+  if(ex) ex.addEventListener('click',()=>exclude(best.v));
   if(rival){
     const btn=$('#flip');
     btn.addEventListener('click',()=>{
@@ -471,6 +529,7 @@ function pickHTML({v,s}){
     '</div>'+
     '<a class="go" href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">'+
       (v.url?'Open this advert':'Find this advert on the classifieds page')+'</a>'+
+    '<button type="button" class="exbtn" id="exbtn">Exclude this one</button>'+
   '</div>';
 }
 const f=(l,v)=>'<div><span>'+l+'</span><b>'+v+'</b></div>';
@@ -512,6 +571,57 @@ function diffChips(a,b){
 // Find weights that put `target` top of `pool`. Scores share a denominator, so
 // target beats v exactly when  w . (val(target) - val(v)) > 0  — a linear feasibility
 // problem, solved by nudging w toward whichever rival is beating it hardest.
+// The sliders you land on when the page opens. The list below always ranks on
+// these, whatever the sliders currently say, so it's a stable reference point.
+const DEFAULT_W = {miles:70, year:45, price:55, kitchen:60, fsh:55, cambelt:40, heater:25, awning:20};
+
+function defaultScore(v){
+  let n=0,d=0;
+  for(const [k,w] of Object.entries(DEFAULT_W)){ n+=w*val(v,k); d+=w; }
+  return d? 100*n/d : 0;
+}
+
+function newestGroup(vans){
+  const seen=vans.map(v=>v.first_seen).filter(Boolean);
+  const dates=[...new Set(seen)].sort();
+  if(dates.length>1){
+    const latest=dates[dates.length-1];
+    return {mode:"scan", when:latest, vans:vans.filter(v=>v.first_seen===latest)};
+  }
+  // one scan only (or no stamps yet) — fall back to the site's own "added" date
+  const cut=Date.now()-14*864e5;
+  const recent=vans.filter(v=>v.added && Date.parse(v.added)>cut);
+  return {mode:"added", when:null, vans:recent};
+}
+
+function drawNewly(){
+  const box=$("#newly");
+  const pool=DATA.vans.filter(v=>v.miles!==null && v.year!==null && v.price!==null
+                                 && !EXCLUDED.has(vanKey(v)) && v.status==="available");
+  const grp=newestGroup(pool);
+  if(!grp.vans.length){ box.hidden=true; return; }
+
+  const ranked=pool.slice().sort((a,b)=>defaultScore(b)-defaultScore(a));
+  const rows=grp.vans.slice().sort((a,b)=>defaultScore(b)-defaultScore(a)).map(v=>{
+    const place=ranked.findIndex(x=>x===v)+1;
+    return '<div class="newrow">'+
+      '<span class="place">#'+place+'/'+ranked.length+'</span>'+
+      '<a href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">'+
+        tag(v)+' '+v.title+'</a>'+
+      '<span class="glance">'+(v.gen||'—')+' · '+gbp(v.price)+' · '+v.year+' · '+
+        mi(v.miles)+' · '+(v.location||'—')+'</span>'+
+    '</div>';
+  }).join('');
+
+  box.hidden=false;
+  box.innerHTML='<h2>New since the last update</h2>'+
+    '<p class="lede">'+
+      (grp.mode==="scan"
+        ? grp.vans.length+' advert'+(grp.vans.length===1?'':'s')+' first appeared in the scrape of '+grp.when+'.'
+        : 'No earlier scrape to compare against yet, so these are the adverts the site itself listed in the last fortnight.')+
+      ' Placings are against the default sliders, not your current ones.</p>'+ rows;
+}
+
 function clearNotches(){ document.querySelectorAll('.notch').forEach(n=>n.classList.remove('show')); }
 
 // For weight k: scores share a denominator, so van B wins when
@@ -541,8 +651,8 @@ function collectState(){
   return {
     app:"california-picker", v:1, saved:new Date().toISOString().slice(0,10),
     weights:{...W}, limits:{...LIMITS},
-    seg:Object.fromEntries(["trans","biturbo","fourmotion","status"].map(n=>[n,seg(n)])),
-    gen:checked("gen"), model:checked("model")
+    seg:Object.fromEntries(["trans","biturbo","fourmotion","poptop","status"].map(n=>[n,seg(n)])),
+    gen:checked("gen"), model:checked("model"), excluded:[...EXCLUDED]
   };
 }
 
