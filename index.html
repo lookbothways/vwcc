@@ -1,425 +1,808 @@
-"""
-Step 2 of 2. Turns raw.json into the vans.json that index.html reads.
-
-    python build_vans.py
-
-Rebuilds from scratch every run, so tweaking a rule and re-running is cheap.
-Prints a report of anything it couldn't work out — paste that to me and I'll
-tighten the rules.
-
-Most fields come straight off the index card, so they're exact rather than
-guessed. Only the free-text bits (features, location, engine output) are
-inferred from the advert description.
-"""
-
-import json, re, sys, datetime
-from pathlib import Path
-
-RAW     = Path("raw.json")
-OUT     = Path("vans.json")
-RETIRED = Path("retired.json")
-REPORT  = Path("retired-report.txt")
-SOURCE = "https://vwcaliforniaclub.com/classifieds/"
-
-# ------------------------------------------------------------- card taxonomy
-
-COLOUR_WORDS = {"white","black","silver","blue","red","grey","gray","green","beige",
-                "brown","purple","gold","orange","yellow","bronze","sand","cherry",
-                "candy","starlight","reflex","indium","ascot","mojave","olympian",
-                "blackberry","acapulco","fortana","metallic","pearl","two","tone"}
-
-def from_classes(classes):
-    """dsg-81 -> dsg ; candy-white-411 -> candy white ; vw-california-se-210 -> vw california se"""
-    out = []
-    for c in classes:
-        if c in ("listing_is_active", "volkswagen-237"):
-            continue
-        out.append(re.sub(r"-\d+$", "", c).replace("-", " ").strip())
-    return out
-
-def colour_of(slugs):
-    for s in slugs:
-        if any(w in COLOUR_WORDS for w in s.split()):
-            return s.title()
-    return None
-
-def model_slug_of(slugs):
-    for s in slugs:
-        if "california" in s or "ocean" in s or "beach" in s or "coast" in s:
-            return s
-    return ""
-
-# ------------------------------------------------------------- derivations
-
-def gen_of(text, year):
-    for pat, g in [(r"t6[.\s-]?1\b", "T6.1"), (r"t5[.\s-]?1\b", "T5.1"),
-                   (r"\bt6\b", "T6"), (r"\bt5\b", "T5"), (r"\bt4\b", "T4")]:
-        if re.search(pat, text, re.I):
-            return g
-    if not year:
-        return None
-    return ("T4" if year <= 2003 else "T5" if year <= 2009 else
-            "T5.1" if year <= 2015 else "T6" if year <= 2019 else "T6.1")
-
-
-def gen_resolved(text, year):
-    """Adverts often say just 'T5' or 'T6' for what is really a T5.1 / T6.1."""
-    g = gen_of(text, year)
-    if year and g == "T5" and year >= 2010: return "T5.1"
-    if year and g == "T6" and year >= 2020: return "T6.1"
-    if year and g == "T5.1" and year <= 2009: return "T5"
-    return g
-
-def model_of(text):
-    if re.search(r"grand\s*calif", text, re.I):     return "Grand California"
-    if re.search(r"westfalia|freestyle", text, re.I): return "Westfalia"
-    for pat, m in [(r"\bocean\b", "Ocean"), (r"\bcoast\b", "Coast"),
-                   (r"\bbeach\b", "Beach"), (r"\bse\b", "SE"), (r"\bsurf\b", "Ocean")]:
-        if re.search(pat, text, re.I):
-            return m
-    return "Conversion"
-
-def bhp_of(text):
-    m = re.search(r"\b(1[2-9]\d|20[0-9])\s*(?:bhp|ps\b|hp\b)", text, re.I)
-    return int(m.group(1)) if m else None
-
-BITURBO_BHP = {180, 199, 204}
-def biturbo_of(text, bhp):
-    if re.search(r"bi[\s-]?tdi|twin[\s-]?turbo", text, re.I):
-        return True
-    if bhp in BITURBO_BHP and re.search(r"2\.0", text):
-        return True
-    if bhp and bhp not in BITURBO_BHP:
-        return False
-    return None
-
-def fourmotion_of(text):
-    return bool(re.search(r"4\s*motion|\b4wd\b|four wheel drive|4\s*x\s*4", text, re.I))
-
-def status_of(text, title, active):
-    head = (title + " " + text[:500]).lower()
-    if re.search(r"\bwanted\b", head):                          return "wanted"
-    if re.search(r"\bsold\b|deposit taken|sale agreed", head):  return "sold"
-    return "available" if active else "sold"
-
-# ---- advert page structure -------------------------------------------------
-# Every advert follows the same shape:
-#   CALI LOCATION / <TOWN> / ADDED: <date> ... DESCRIPTION ... CAR SUMMARY ...
-#   CAR FEATURES / EXTRA FEATURES / <one feature per line> / EMAIL OWNER
-
-def location_of(text):
-    m = re.search(r"CALI LOCATION\s*\n\s*(.+?)\s*\n", text or "")
-    if not m:
-        return None
-    val = m.group(1).strip().rstrip(".,")
-    return val.title() if 2 < len(val) < 50 else None
-
-def added_of(text):
-    m = re.search(r"ADDED:\s*(.+?)\s*\n", text or "")
-    return m.group(1).strip().title() if m else None
-
-def seller_of(text):
-    m = re.search(r"\n([A-Z][A-Z .'&-]{2,40})\n(Private Seller|Dealer)", text or "")
-    if m:
-        return m.group(1).strip().title(), m.group(2).lower().replace(" seller", "")
-    return None, None
-
-def description_of(text):
-    m = re.search(r"\nDESCRIPTION\s*\n(.*?)\n\s*CAR SUMMARY", text or "", re.S)
-    return m.group(1).strip() if m else ""
-
-def summary_of(text):
-    """The CAR SUMMARY table — Model / Year / Exterior Color and friends."""
-    out = {}
-    m = re.search(r"\nCAR SUMMARY\s*\n(.*?)\n\s*CAR (?:HIGHLIGHTS|FEATURES)", text or "", re.S)
-    if not m:
-        return out
-    lines = [l.strip() for l in m.group(1).split("\n") if l.strip()]
-    for k, v in zip(lines[::2], lines[1::2]):
-        out[k.lower()] = v
-    return out
-
-# the site's own feature checkboxes, mapped onto our keys
-SITE_FEATURES = {
-    "wind out awning": "awning",
-    "parking sensors": "parksensors",
-    "auxiliary heating": "heater",
-    "climate control": "aircon",
-    "satellite navigation": "satnav",
-    "adaptive cruise control": "cruise",
-    "rear camera": "reversecam",
-    "tow bar": "towbar",
-    "led/xenon headlights": "ledlights",
-    "warranty": "warranty",
-    "premium materials": "leather",
-    "power sliding door": "electricdoor",
-    "air suspension": "airsuspension",
-    "central locking": "centrallocking",
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VW camper selector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#14161a;
+  --muted:#6b7280;
+  --faint:#9aa1ab;
+  --rule:#e4e7ec;
+  --wash:#f6f7f9;
+  --pick:#0b57d0;
+  --ghost:#c2410c;
+  --thumb:16px;
 }
-FORM_NOISE = re.compile(r"required|email|submit|characters|message|^first$|^last$", re.I)
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:#fff;color:var(--ink);
+  font-family:Roboto,system-ui,sans-serif;font-weight:400;font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:Roboto,system-ui,sans-serif;margin:0}
+.mono{font-family:"Roboto Mono",ui-monospace,monospace}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
 
-def site_features_of(text):
-    m = re.search(r"\n(?:EXTRA FEATURES|CAR FEATURES)\s*\n(.*?)(?:\nEMAIL OWNER|\nDesign By)",
-                  text or "", re.S)
-    if not m:
-        return []
-    out = []
-    for line in m.group(1).split("\n"):
-        line = line.strip()
-        if not line or FORM_NOISE.search(line):
-            continue
-        key = SITE_FEATURES.get(line.lower())
-        if key:
-            out.append(key)
-    return out
+/* header */
+header{border-bottom:1px solid var(--rule);padding:34px 0 18px;margin-bottom:28px}
+h1{font-weight:900;font-size:30px;letter-spacing:-.024em;line-height:1.05}
+.sub{color:var(--muted);font-size:13px;margin-top:8px}
+.sub a{color:var(--ink)}
+.tools{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.tools button{font-family:Roboto,sans-serif;font-size:12px;font-weight:500;letter-spacing:.02em;
+  background:#fff;border:1px solid var(--rule);color:var(--ink);padding:5px 11px;border-radius:2px;cursor:pointer}
+.tools button:hover{border-color:var(--ink)}
+.tools button:focus-visible{outline:2px solid var(--pick);outline-offset:1px}
+.toolmsg{font-family:"Roboto Mono",monospace;font-size:11.5px;color:var(--muted)}
+.eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
 
+/* sticky rank ribbon */
+.ribbon{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--rule);
+  padding:14px 0 12px;margin-bottom:24px}
+.ribbon .now{display:flex;align-items:baseline;gap:8px;min-width:0;flex-wrap:wrap}
+.ribbon .rank{font-family:"Roboto Mono",monospace;font-weight:500;font-size:26px;color:var(--pick);letter-spacing:-.02em}
+.ribbon .sitenum{font-family:"Roboto Mono",monospace;font-size:13px;color:var(--faint)}
+.ribbon .nowname{font-weight:700;font-size:18px;letter-spacing:-.012em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:60px;flex:1 1 auto}
+.ribbon .nowmeta{font-family:"Roboto Mono",monospace;font-size:13.5px;color:var(--ink);white-space:nowrap}
+.ribbon .nowmeta em{font-style:normal;color:var(--rule);padding:0 3px}
+.ribbon .nowscore{font-family:"Roboto Mono",monospace;font-size:16px;color:var(--muted);margin-left:auto}
+@media (max-width:640px){
+  .ribbon .nowname{flex:1 1 100%;order:2}
+  .ribbon .nowmeta{flex:1 1 100%;order:3;font-size:11.5px}
+  .ribbon .nowscore{order:1}
+}
+.ticks{display:flex;gap:4px;margin-top:11px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.ticks::-webkit-scrollbar{display:none}
+.tick{flex:0 0 auto;font-family:"Roboto Mono",monospace;font-size:12.5px;line-height:1;
+  padding:7px 8px;border:1px solid var(--rule);border-radius:2px;background:#fff;color:var(--faint);cursor:pointer}
+.tick.back{border-color:var(--ink);background:var(--ink);color:#fff;font-family:Roboto,sans-serif;
+  font-weight:700;letter-spacing:.1em;font-size:11px;padding:7px 12px;cursor:pointer}
+.tick.lead{border-color:var(--pick);color:var(--pick);font-weight:500;cursor:default}
+.tick.cmp{border-color:var(--ghost);color:var(--ghost);font-weight:500}
+.tick:focus-visible{outline:2px solid var(--pick);outline-offset:1px}
 
-FEATURE_RULES = {
-    "poptop":       r"pop[\s-]?top|pop[\s-]?up roof|elevating roof|roof bed|rising roof",
-    "kitchen":      r"\bkitchen\b|two burner|2 ring|twin hob|\bsink\b|\bfridge\b",
-    "fsh":          r"\bfsh\b|fvwsh|full (?:vw |main dealer )?service history|service history",
-    "cambelt":      r"cam\s?belt|timing belt",
-    "heater":       r"(?:diesel|parking|auxiliary|aux|night)\s*heat|webasto|eberspa",
-    "awning":       r"\bawning\b|wind[\s-]?out|\bcanopy\b",
-    "electricroof": r"electric(?:ally)?\s+(?:pop[\s-]?up |pop[\s-]?top )?roof",
-    "electricdoor": r"electric (?:side |sliding |soft-close )?(?:sliding )?door|power slid",
-    "swivelseats":  r"swivel|rotating (?:front )?seats",
-    "heatedseats":  r"heated (?:front |captain )?seats",
-    "parksensors":  r"parking sensors|park assist",
-    "reversecam":   r"revers(?:e|ing) camera|rear[\s-]?view camera|rear camera",
-    "satnav":       r"sat[\s-]?nav|navigation|discover media|app[\s-]?connect|car ?play",
-    "bikerack":     r"bike (?:rack|carrier)|cycle carrier",
-    "towbar":       r"tow\s?bar",
-    "solar":        r"solar",
-    "oneowner":     r"one owner|1 owner|one previous owner|sole owner",
-    "warranty":     r"warrant(?:y|ies)",
-    "euro6":        r"euro\s?6|ulez",
-    "aircon":       r"air[\s-]?con|climatronic|climate control",
-    "cruise":       r"cruise control",
-    "tinted":       r"tinted|privacy glass",
-    "leather":      r"leather|alcantara",
-    "digitaldash":  r"digital dash",
-    "bedextension": r"bed extension",
-    "alloys":       r"\balloy",
-    "ledlights":    r"led head|bi[\s-]?xenon|xenon",
-    "roofbars":     r"roof bars",
+/* thumbnails */
+.thumbs{display:flex;gap:6px;margin-top:14px;overflow-x:auto;scrollbar-width:none}
+.thumbs::-webkit-scrollbar{display:none}
+.thumbs img{flex:0 0 auto;width:104px;height:74px;object-fit:cover;border:1px solid var(--rule);border-radius:2px;background:var(--wash)}
+.nothumbs{margin-top:12px;font-size:12px;color:var(--faint)}
+
+/* pick */
+.pick{border:1px solid var(--rule);border-top:3px solid var(--pick);padding:26px 26px 22px}
+.pick .eyebrow{color:var(--pick)}
+.pick h2{font-weight:700;font-size:25px;letter-spacing:-.02em;margin:10px 0 0;max-width:34ch}
+.score{float:right;text-align:right;margin-left:20px}
+.score b{font-family:"Roboto Mono",monospace;font-weight:500;font-size:34px;letter-spacing:-.03em;display:block;line-height:1}
+.headline{display:flex;flex-wrap:wrap;gap:8px 26px;margin:20px 0 4px;padding:16px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.headline div{min-width:82px}
+.headline span{display:block;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:700}
+.headline b{font-family:"Roboto Mono",monospace;font-weight:500;font-size:17px}
+.notes{color:var(--muted);font-size:14px;margin:14px 0 0;max-width:62ch}
+.chips{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:11.5px;letter-spacing:.02em;border:1px solid var(--rule);padding:3px 9px;border-radius:2px;color:var(--muted);background:#fff}
+.chip.on{border-color:var(--ink);color:var(--ink)}
+.chip.add{border-color:var(--ghost);color:var(--ghost)}
+.chip.lose{border-color:var(--rule);color:var(--faint);text-decoration:line-through}
+.go.small{margin-top:0;font-size:12px}
+.thumbs{text-decoration:none}
+.go{display:inline-block;margin-top:20px;font-size:13px;font-weight:500;color:var(--pick);text-decoration:none;border-bottom:1px solid currentColor;padding-bottom:1px}
+
+/* two-column compare */
+.compare{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule);border-top:3px solid var(--pick)}
+.compare .side{padding:22px 22px 20px}
+.compare .side+.side{border-left:1px solid var(--rule);border-top-color:var(--ghost)}
+.compare .side.rival{background:var(--wash)}
+.compare .eyebrow{margin-bottom:8px}
+.compare .side.rival .eyebrow{color:var(--ghost)}
+.compare h3{font-weight:700;font-size:18px;letter-spacing:-.016em;margin-bottom:6px}
+.compare .meta{font-family:"Roboto Mono",monospace;font-size:12.5px;color:var(--muted)}
+.compare .fit{font-family:"Roboto Mono",monospace;font-size:24px;letter-spacing:-.02em;margin-top:10px;display:block}
+.compare .thumbs img{width:88px;height:62px}
+.difflist{list-style:none;margin:16px 0 0;padding:16px 0 0;border-top:1px solid var(--rule)}
+.difflist li{display:flex;gap:8px;align-items:baseline;font-size:13px;padding:4px 0}
+.difflist li::before{content:"";flex:0 0 auto;width:6px;height:6px;border-radius:50%;background:var(--faint);transform:translateY(-2px)}
+.difflist li.better::before{background:#15803d}
+.difflist li.worse::before{background:#b91c1c}
+.difflist li.better b{color:#15803d}
+.difflist li.worse b{color:#b91c1c}
+.difflist b{font-family:"Roboto Mono",monospace;font-weight:500;font-size:12.5px}
+.difflist .what{color:var(--muted)}
+.runner .cmphint{font-size:12.5px;color:var(--faint);margin:8px 0 0}
+.samenote{font-size:12.5px;color:var(--faint);margin-top:16px;padding-top:16px;border-top:1px solid var(--rule)}
+.cmpbar{border:1px solid var(--rule);border-top:none;padding:14px 22px;display:flex;gap:14px;
+  align-items:baseline;flex-wrap:wrap;background:#fff}
+.cmpbar .hint{font-size:12.5px;color:var(--muted);max-width:56ch}
+@media (max-width:820px){
+  .compare{grid-template-columns:1fr}
+  .compare .side+.side{border-left:none;border-top:1px solid var(--rule)}
 }
 
-def features_of(text):
-    return [k for k, pat in FEATURE_RULES.items() if re.search(pat, text, re.I)]
+/* runner up */
+.runner{border:1px solid var(--rule);border-top:none;padding:16px 26px 18px;background:var(--wash)}
+.runner .row{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.runner h3{font-weight:500;font-size:16px;letter-spacing:-.01em}
+.runner .meta{font-family:"Roboto Mono",monospace;font-size:12.5px;color:var(--muted)}
+/* controls */
+.controls{margin-top:44px;display:grid;grid-template-columns:300px 1fr;gap:44px}
+fieldset{border:none;margin:0 0 26px;padding:0}
+legend{padding:0;margin-bottom:12px}
+.seg{display:flex;border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin-bottom:12px}
+.seg label{flex:1;text-align:center;font-size:12px;padding:6px 4px;cursor:pointer;color:var(--muted);border-right:1px solid var(--rule)}
+.seg label:last-child{border-right:none}
+.seg input{position:absolute;opacity:0;width:0;height:0}
+.seg input:checked+span{color:#fff}
+.seg label:has(input:checked){background:var(--ink)}
+.seg label:has(input:focus-visible){outline:2px solid var(--pick);outline-offset:-2px}
+.boxes{display:flex;flex-wrap:wrap;gap:6px}
+.boxes label{font-size:12px;border:1px solid var(--rule);padding:4px 10px;border-radius:2px;cursor:pointer;color:var(--muted)}
+.boxes label:has(input:checked){border-color:var(--ink);color:var(--ink);font-weight:500}
+.boxes input{position:absolute;opacity:0;width:0;height:0}
+.boxes label:has(input:focus-visible){outline:2px solid var(--pick);outline-offset:1px}
+.count{font-family:"Roboto Mono",monospace;font-size:12px;color:var(--muted);border-top:1px solid var(--rule);padding-top:12px}
 
+/* sliders */
+.slider{margin-bottom:15px}
+.slider .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:3px}
+.slider .lab b{font-weight:400}
+.slider .val{font-family:"Roboto Mono",monospace;font-size:12px;color:var(--muted)}
+.track{position:relative;height:20px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:20px;background:transparent;margin:0;display:block}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--rule);margin-top:9px}
+input[type=range]::-moz-range-track{height:2px;background:var(--rule)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:var(--thumb);height:var(--thumb);margin-top:-7px;background:var(--ink);border:none;border-radius:50%;cursor:pointer}
+input[type=range]::-moz-range-thumb{width:var(--thumb);height:var(--thumb);background:var(--ink);border:none;border-radius:50%;cursor:pointer}
+input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(11,87,208,.35)}
+input[type=range].zero::-webkit-slider-thumb{background:#fff;border:1.5px solid var(--faint)}
+input[type=range].zero::-moz-range-thumb{background:#fff;border:1.5px solid var(--faint)}
+.groupnote{font-size:12px;color:var(--faint);margin:-4px 0 14px}
 
-BOILERPLATE = re.compile(
-    r"private sellers can sell|place advert|privacy policy|terms of service|"
-    r"total views|add to favorites|share this|previous|next", re.I)
+.newly{margin-top:52px;border-top:1px solid var(--rule);padding-top:20px}
+.newly h2{font-weight:700;font-size:19px;letter-spacing:-.018em;margin-bottom:4px}
+.newly .lede{color:var(--muted);font-size:13px;margin:0 0 16px;max-width:64ch}
+.newrow{display:flex;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.newrow .place{font-family:"Roboto Mono",monospace;font-size:12px;color:var(--faint);min-width:58px}
+.newrow a{font-weight:500;font-size:14px;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule)}
+.newrow a:hover{border-bottom-color:var(--ink)}
+.newrow .glance{font-family:"Roboto Mono",monospace;font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
+.excluded{margin-top:12px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.excluded .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:700;width:100%}
+.excluded button{font-family:"Roboto Mono",monospace;font-size:11px;border:1px solid var(--rule);
+  background:#fff;color:var(--muted);padding:3px 7px;border-radius:2px;cursor:pointer}
+.excluded button:hover{border-color:var(--ink);color:var(--ink)}
+.exbtn{margin-top:20px;margin-left:14px;background:none;border:none;color:var(--muted);
+  font-family:Roboto,sans-serif;font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0}
+.exbtn:hover{color:var(--ink)}
+@media (max-width:640px){ .newrow .glance{margin-left:0;flex:1 1 100%} }
+footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:14px;font-size:12px;color:var(--faint)}
+.empty{border:1px solid var(--rule);padding:30px 26px}
+.empty h2{font-weight:700;font-size:19px;margin-bottom:8px}
 
-def notes_of(text, title):
-    body = re.sub(r"\s+", " ", text)
-    for line in re.split(r"(?<=[.!])\s+", body):
-        line = line.strip()
-        if 45 <= len(line) <= 240 and not line.startswith("£") \
-           and not BOILERPLATE.search(line) and title.lower() not in line.lower():
-            return line
-    return ""
+@media (max-width:820px){
+  .controls{grid-template-columns:1fr;gap:30px}
+  h1{font-size:25px}
+  .score b{font-size:28px}
+  .wrap{padding:0 18px 70px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
 
-# ------------------------------------------------------------- retired report
+<header>
+  <div class="eyebrow">VW California Club classifieds</div>
+  <h1>VW camper selector</h1>
+  <p class="sub" id="meta">Loading…</p>
+  <div class="tools" id="tools" hidden>
+    <button type="button" id="save">Save these settings</button>
+    <button type="button" id="load">Load settings</button>
+    <button type="button" id="share">Share these filters</button>
+    <input type="file" id="loadFile" accept="application/json,.json" hidden>
+    <span class="toolmsg" id="toolmsg"></span>
+  </div>
+</header>
 
-# these mirror the opening slider positions in index.html
-DEFAULT_W = {"miles": 70, "year": 45, "price": 55,
-             "kitchen": 100, "reversecam": 85, "parksensors": 85, "fsh": 83,
-             "swivelseats": 80, "cruise": 65, "electricroof": 60,
-             "cambelt": 40, "heater": 25, "awning": 20}
-SCORE_KEYS = ["miles", "year", "price", "kitchen", "fsh", "cambelt", "heater", "awning",
-              "electricroof", "swivelseats", "parksensors", "reversecam", "satnav",
-              "bikerack", "towbar", "cruise", "electricdoor", "solar", "oneowner",
-              "warranty", "euro6"]
+<div class="ribbon" id="ribbon" hidden></div>
 
-FEATURE_LABELS = {
-    "kitchen": "full camper kitchen", "fsh": "full service history",
-    "cambelt": "recent cambelt", "heater": "diesel parking heater",
-    "awning": "wind-out awning", "electricroof": "electric roof",
-    "swivelseats": "swivel seats", "parksensors": "parking sensors",
-    "reversecam": "reversing camera", "satnav": "sat nav", "bikerack": "bike rack",
-    "towbar": "tow bar", "cruise": "adaptive cruise", "electricdoor": "power sliding door",
-    "solar": "solar panel", "oneowner": "one owner", "warranty": "warranty",
-    "euro6": "Euro 6 / ULEZ", "leather": "premium materials", "aircon": "climate control",
+<main id="result"></main>
+
+<section class="controls" id="controls" hidden>
+  <div>
+    <fieldset>
+      <legend class="eyebrow">Must have</legend>
+
+      <div class="lab" style="font-size:13px;margin-bottom:4px">Gearbox</div>
+      <div class="seg" data-seg="trans">
+        <label><input type="radio" name="trans" value="any"><span>Any</span></label>
+        <label><input type="radio" name="trans" value="auto" checked><span>Auto</span></label>
+        <label><input type="radio" name="trans" value="manual"><span>Manual</span></label>
+      </div>
+
+      <div class="lab" style="font-size:13px;margin-bottom:4px">Twin-turbo (BiTDI)</div>
+      <div class="seg" data-seg="biturbo">
+        <label><input type="radio" name="biturbo" value="any" checked><span>Any</span></label>
+        <label><input type="radio" name="biturbo" value="exclude"><span>Exclude</span></label>
+        <label><input type="radio" name="biturbo" value="only"><span>Only</span></label>
+      </div>
+
+      <div class="lab" style="font-size:13px;margin-bottom:4px">4Motion</div>
+      <div class="seg" data-seg="fourmotion">
+        <label><input type="radio" name="fourmotion" value="any" checked><span>Any</span></label>
+        <label><input type="radio" name="fourmotion" value="require"><span>Require</span></label>
+        <label><input type="radio" name="fourmotion" value="exclude"><span>Exclude</span></label>
+      </div>
+
+      <div class="lab" style="font-size:13px;margin-bottom:4px">Sold &amp; wanted adverts</div>
+      <div class="seg" data-seg="status">
+        <label><input type="radio" name="status" value="hide" checked><span>Hide</span></label>
+        <label><input type="radio" name="status" value="show"><span>Show</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend class="eyebrow">Generation</legend>
+      <div class="boxes" id="gens"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend class="eyebrow">Model</legend>
+      <div class="boxes" id="models"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend class="eyebrow">Cut-offs</legend>
+      <div id="limits"></div>
+    </fieldset>
+
+    <div class="count" id="count"></div>
+    <div class="excluded" id="excluded"></div>
+  </div>
+
+  <div>
+    <fieldset>
+      <legend class="eyebrow">What matters most</legend>
+      <div id="coreWeights"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend class="eyebrow">Kit, in the order you care about it</legend>
+      <p class="groupnote">Rows re-order themselves by weight when you let go of a slider.</p>
+      <div id="featWeights"></div>
+    </fieldset>
+  </div>
+</section>
+
+<section class="newly" id="newly" hidden></section>
+
+<footer>
+  Advert text scanned from vwcaliforniaclub.com. Prices and mileages are as written by the sellers, not verified.
+  Re-run the scan in chat to refresh <span class="mono">vans.json</span>.
+</footer>
+
+</div>
+
+<script>
+const FEATURES = [
+  ['kitchen','Full camper kitchen'],
+  ['fsh','Full service history'],
+  ['cambelt','Cambelt done recently'],
+  ['heater','Diesel parking heater'],
+  ['awning','Wind-out awning'],
+  ['electricroof','Electric roof'],
+  ['swivelseats','Swivel front seats'],
+  ['parksensors','Parking sensors'],
+  ['reversecam','Reversing camera'],
+  ['satnav','Sat nav'],
+  ['bikerack','Bike rack'],
+  ['towbar','Tow bar'],
+  ['cruise','Adaptive cruise control'],
+  ['electricdoor','Power sliding door'],
+  ['solar','Solar panel'],
+  ['oneowner','One owner from new'],
+  ['warranty','Warranty remaining'],
+  ['euro6','Euro 6 / ULEZ']
+];
+const CORE = [
+  ['miles','Low mileage'],
+  ['year','Newer'],
+  ['price','Low price']
+];
+
+const W = {miles:70, year:45, price:55,
+           kitchen:100, reversecam:85, parksensors:85, fsh:83, swivelseats:80,
+           cruise:65, electricroof:60, cambelt:40, heater:25, awning:20};
+FEATURES.forEach(([k])=>{ if(!(k in W)) W[k]=0; });
+
+let DATA=null, RANGE={}, LIMITS={};
+const $ = s => document.querySelector(s);
+const gbp = n => '£'+n.toLocaleString('en-GB');
+const mi  = n => n.toLocaleString('en-GB')+' mi';
+
+fetch('vans.json',{cache:'no-store'})
+  .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
+  .then(init)
+  .catch(()=>{
+    $('#meta').textContent='';
+    $('#result').innerHTML='<div class="empty"><h2>vans.json didn\'t load</h2><p class="notes">'+
+      'Browsers block file reads from disk, so opening index.html directly won\'t work. '+
+      'Push both files to GitHub Pages, or run <span class="mono">python -m http.server</span> in this folder and open localhost:8000.</p></div>';
+  });
+
+function init(d){
+  DATA=d;
+  const v=d.vans;
+  RANGE.miles=[Math.min(...v.map(x=>x.miles)), Math.max(...v.map(x=>x.miles))];
+  RANGE.year =[Math.min(...v.map(x=>x.year )), Math.max(...v.map(x=>x.year ))];
+  RANGE.price=[Math.min(...v.map(x=>x.price)), Math.max(...v.map(x=>x.price))];
+  // the year slider runs to the current year even if no advert is that new yet
+  RANGE.yearTop=Math.max(RANGE.year[1], new Date().getFullYear());
+  const clamp=(x,lo,hi)=>Math.min(hi,Math.max(lo,x));
+  LIMITS={
+    maxMiles: clamp(100000, RANGE.miles[0], RANGE.miles[1]),
+    maxPrice: clamp(35000,  RANGE.price[0], RANGE.price[1]),
+    minYear:  RANGE.year[0]
+  };
+
+  $('#meta').innerHTML='Scanned '+d.scanned+' · '+v.length+' adverts · <a href="'+d.source+'" target="_blank" rel="noopener">open the classifieds</a>';
+  $('#controls').hidden=false;
+
+  buildBoxes('#gens','gen',['T4','T5','T5.1','T6','T6.1'], ['T4','T6.1']);
+  buildBoxes('#models','model',['SE','Ocean','Beach','Coast','Grand California','Westfalia','Conversion'],
+             ['Beach','Conversion']);
+  buildLimits();
+  buildWeights('#coreWeights',CORE);
+  buildWeights('#featWeights',FEATURES);
+  document.querySelectorAll('.seg input').forEach(i=>i.addEventListener('change',render));
+  resort(); markZeros(); render(); wireTools();
 }
 
+function buildBoxes(sel,name,vals,offByDefault=[]){
+  $(sel).innerHTML = vals.map(v=>
+    '<label><input type="checkbox" name="'+name+'" value="'+v+'"'+
+    (offByDefault.includes(v)?'':' checked')+'>'+v+'</label>').join('');
+  $(sel).addEventListener('change',render);
+}
 
-def scorer(vans):
-    """Returns a score(van) using the page's default weights, normalised over `vans`."""
-    live = [v for v in vans if v["miles"] and v["year"] and v["price"]]
-    if not live:
-        return lambda v: 0.0
-    rng = {k: (min(v[k] for v in live), max(v[k] for v in live))
-           for k in ("miles", "year", "price")}
+function buildLimits(){
+  const rows=[
+    ['maxPrice','Price at most', RANGE.price[0], RANGE.price[1], 250, gbp],
+    ['maxMiles','Mileage at most', RANGE.miles[0], RANGE.miles[1], 1000, mi],
+    ['minYear','Year from', RANGE.year[0], RANGE.yearTop, 1, String]
+  ];
+  $('#limits').innerHTML = rows.map(([k,label,min,max,step])=>
+    '<div class="slider"><div class="lab"><b>'+label+'</b><span class="val" id="lv-'+k+'"></span></div>'+
+    '<div class="track"><input type="range" id="lim-'+k+'" min="'+min+'" max="'+max+'" step="'+step+'" value="'+LIMITS[k]+'"></div></div>').join('');
+  rows.forEach(([k,,,,,fmt])=>{
+    const el=document.getElementById('lim-'+k);
+    el.addEventListener('input',()=>{ LIMITS[k]=+el.value; document.getElementById('lv-'+k).textContent=fmt(+el.value); render(); });
+    document.getElementById('lv-'+k).textContent=fmt(LIMITS[k]);
+  });
+}
 
-    def val(v, k):
-        lo, hi = rng.get(k, (0, 1))
-        if k == "miles": return 1 - ((v["miles"] - lo) / (hi - lo) if hi > lo else 0)
-        if k == "year":  return (v["year"] - lo) / (hi - lo) if hi > lo else 1
-        if k == "price": return 1 - ((v["price"] - lo) / (hi - lo) if hi > lo else 0)
-        return 1.0 if k in v["features"] else 0.0
+function buildWeights(sel,list){
+  $(sel).innerHTML = list.map(([k,label])=>
+    '<div class="slider" data-k="'+k+'"><div class="lab"><b>'+label+'</b><span class="val" id="wv-'+k+'">'+W[k]+'</span></div>'+
+    '<div class="track"><input type="range" id="w-'+k+'" min="0" max="100" step="1" value="'+W[k]+'">'+
+    '</div></div>').join('');
+  list.forEach(([k])=>{
+    const el=document.getElementById('w-'+k);
+    el.addEventListener('input',()=>{ W[k]=+el.value; document.getElementById('wv-'+k).textContent=W[k]; render(); });
+    if(sel==='#featWeights') el.addEventListener('change',()=>{ resort(); render(); });
+  });
+}
 
-    total = sum(DEFAULT_W.values())
+function resort(){
+  const box=$('#featWeights');
+  [...box.children].sort((a,b)=> W[b.dataset.k]-W[a.dataset.k] ||
+      FEATURES.findIndex(f=>f[0]===a.dataset.k)-FEATURES.findIndex(f=>f[0]===b.dataset.k))
+    .forEach(n=>box.appendChild(n));
+}
 
-    def score(v):
-        if not (v["miles"] and v["year"] and v["price"]):
-            return 0.0
-        return 100 * sum(w * val(v, k) for k, w in DEFAULT_W.items()) / total
-    return score
+const checked = name => [...document.querySelectorAll('input[name="'+name+'"]:checked')].map(i=>i.value);
+const seg = name => document.querySelector('input[name="'+name+'"]:checked').value;
 
+function passes(v){
+  if(EXCLUDED.has(vanKey(v))) return false;
+  if(seg('status')==='hide' && v.status!=='available') return false;
+  const t=seg('trans'); if(t!=='any' && v.trans!==t) return false;
+  const b=seg('biturbo');
+  if(b==='exclude' && v.biturbo===true) return false;
+  if(b==='only' && v.biturbo!==true) return false;
+  const f=seg('fourmotion');
+  if(f==='require' && !v.fourmotion) return false;
+  if(f==='exclude' && v.fourmotion) return false;
+  if(!checked('gen').includes(v.gen)) return false;
+  if(!checked('model').includes(v.model)) return false;
+  if(v.price>LIMITS.maxPrice || v.miles>LIMITS.maxMiles || v.year<LIMITS.minYear) return false;
+  return true;
+}
 
-def write_report(live_vans, build_one):
-    if not RETIRED.exists():
-        return
-    retired_raw = json.loads(RETIRED.read_text(encoding="utf-8"))
-    if not retired_raw:
-        return
-    gone = []
-    for i, c in enumerate(retired_raw, 1):
-        v = build_one(i, c)
-        v["retired_on"] = c.get("retired_on")      # stamped by scrape.py, not in the advert
-        gone.append(v)
+const norm=(x,[lo,hi])=> hi===lo?1:(x-lo)/(hi-lo);
+function val(v,k){
+  if(k==='miles') return 1-norm(v.miles,RANGE.miles);
+  if(k==='year')  return norm(v.year,RANGE.year);
+  if(k==='price') return 1-norm(v.price,RANGE.price);
+  return v.features.includes(k)?1:0;
+}
+const KEYS = ()=> [...CORE,...FEATURES].map(x=>x[0]);
+function score(v){
+  let n=0,d=0;
+  for(const k of KEYS()){ n+=W[k]*val(v,k); d+=W[k]; }
+  return d? 100*n/d : 0;
+}
 
-    score = scorer(live_vans + gone)
-    ranked = sorted(live_vans, key=score, reverse=True)
+// The van being compared is held by identity, not by position — moving a slider
+// re-ranks the board underneath it, and it has to survive that.
+let cmpKey=null;
+const inCompare = () => cmpKey!==null;
 
-    lines = ["ADVERTS THAT HAVE GONE",
-             f"Written {datetime.date.today().strftime('%d %B %Y')} · "
-             f"{len(gone)} advert{'' if len(gone)==1 else 's'} · "
-             f"ranked against the {len(live_vans)} still listed, using the page's default sliders",
-             ""]
-    for v in sorted(gone, key=score, reverse=True):
-        s = score(v)
-        place = sum(1 for o in ranked if score(o) > s) + 1
-        kit = [FEATURE_LABELS.get(f, f) for f in v["features"] if f in FEATURE_LABELS][:6]
-        lines += [
-            f"[{v.get('listing_id') or v['id']}] {v['title']}",
-            f"    {v.get('gen') or '?'} {v.get('model') or ''}".rstrip() +
-            f" · {v.get('gearbox') or '?'}" + (f" · {v['bhp']}bhp" if v.get("bhp") else ""),
-            f"    £{v['price']:,}" if v.get("price") else "    price not stated",
-            f"    {v.get('year') or '?'} · "
-            f"{format(v['miles'], ',') + ' miles' if v.get('miles') else 'mileage not stated'}"
-            f" · {v.get('location') or 'location not stated'}",
-            f"    Would have placed {place}{'st' if place%10==1 and place!=11 else 'nd' if place%10==2 and place!=12 else 'rd' if place%10==3 and place!=13 else 'th'}"
-            f" of {len(ranked)+1} on the default settings (fit {s:.1f})",
-            f"    Kit: {', '.join(kit) if kit else 'nothing listed'}",
-            f"    Gone by {v.get('retired_on') or 'unknown'}"
-            + (f", listed {v['added']}" if v.get("added") else ""),
-            f"    {v.get('url','')}",
-            "",
-        ]
-    REPORT.write_text("\n".join(lines), encoding="utf-8")
-    print(f"wrote retired-report.txt — {len(gone)} advert{'' if len(gone)==1 else 's'}")
+// ---- exclusions, remembered per browser --------------------------------
+const STORE="vanpicker.excluded";
+const vanKey = v => String(v.listing_id || v.url || v.id);
+let EXCLUDED = (()=>{ try{ return new Set(JSON.parse(localStorage.getItem(STORE)||"[]")); }
+                      catch(e){ return new Set(); } })();
+function persistExcluded(){
+  try{ localStorage.setItem(STORE, JSON.stringify([...EXCLUDED])); }
+  catch(e){ /* private mode or storage disabled — keeps working for this session */ }
+}
+function exclude(v){ EXCLUDED.add(vanKey(v)); persistExcluded(); render(); }
+function unexclude(key){ EXCLUDED.delete(key); persistExcluded(); render(); }
 
+function drawExcluded(){
+  const box=$("#excluded");
+  if(!EXCLUDED.size){ box.innerHTML=""; return; }
+  const named=[...EXCLUDED].map(k=>{
+    const v=DATA.vans.find(x=>vanKey(x)===k);
+    return {k, label:v? (v.listing_id? "["+v.listing_id+"] ":"")+v.title.replace(/^VW /,"") : k};
+  });
+  box.innerHTML='<span class="lbl">Excluded — click to restore</span>'+
+    named.map(n=>'<button type="button" data-k="'+n.k+'">'+n.label+' ×</button>').join('');
+  box.querySelectorAll("button").forEach(b=>
+    b.addEventListener("click",()=>unexclude(b.dataset.k)));
+}
 
-# ------------------------------------------------------------- build
+function render(){
+  const scorable = DATA.vans.filter(v=>v.miles!==null && v.year!==null && v.price!==null);
+  const missing  = DATA.vans.length - scorable.length;
+  const list = scorable.filter(passes).map(v=>({v,s:score(v)}))
+    .sort((a,b)=> b.s-a.s || a.v.price-b.v.price);
+  $('#count').textContent = list.length+' of '+DATA.vans.length+' adverts pass the filters'+
+    (missing? ' · '+missing+' can\'t be ranked yet (missing year or mileage)':'');
 
-def main():
-    if not RAW.exists():
-        sys.exit("raw.json not found — run scrape.py first.")
-    raw = json.loads(RAW.read_text(encoding="utf-8"))
+  if(!list.length){
+    $('#ribbon').hidden=true;
+    drawExcluded(); drawNewly();
+    $('#result').innerHTML='<div class="empty"><h2>Nothing passes</h2><p class="notes">The cut-offs and must-haves rule out every advert. Loosen one and it\'ll come back.</p></div>';
+    return;
+  }
 
-    def build_one(i, c):
-        slugs = from_classes(c.get("classes", []))
-        meta  = c.get("meta") or []
-        year  = int(meta[0]) if meta and meta[0].isdigit() else None
-        if year is None and summary_of(detail).get("year", "").isdigit():
-            year = int(summary_of(detail)["year"])
-        gearbox_label = meta[1] if len(meta) > 1 else ""
-        fuel_label    = meta[2] if len(meta) > 2 else ""
-        detail = c.get("detail_text") or ""
-        title  = c.get("title") or "Untitled advert"
-        desc   = description_of(detail)
-        summ   = summary_of(detail)
-        seller, seller_type = seller_of(detail)
-        blob   = f"{title} {' '.join(slugs)} {desc}"
+  // a filter change can take the comparison van off the board entirely
+  let rival = inCompare()? list.find(x=>vanKey(x.v)===cmpKey) : null;
+  if(inCompare() && !rival) cmpKey=null;
+  if(inCompare() && vanKey(list[0].v)===cmpKey){ cmpKey=null; rival=null; }  // it won
 
-        trans = ("auto" if re.search(r"dsg|auto|tiptronic", gearbox_label, re.I)
-                 else "manual" if gearbox_label else None)
-        bhp = bhp_of(blob)
+  drawRibbon(list);
+  drawExcluded();
+  drawNewly();
 
-        v = {
-            "id": i,
-            "listing_id": c.get("listing_id"),
-            "title": title,
-            "price": c.get("price"),
-            "miles": c.get("miles"),
-            "year": year,
-            "gen": gen_resolved(f"{title} {' '.join(slugs)}", year),
-            "model": model_of(f"{title} {model_slug_of(slugs)}"),
-            "trans": trans,
-            "gearbox": gearbox_label or None,
-            "bhp": bhp,
-            "fuel": "petrol" if re.search(r"petrol|tsi", f"{fuel_label} {blob}", re.I) else "diesel",
-            "biturbo": biturbo_of(blob, bhp),
-            "fourmotion": fourmotion_of(blob),
-            "colour": colour_of(slugs) or (summ.get("exterior color") or None),
-            "location": location_of(detail),
-            "model_name": summ.get("model"),
-            "status": status_of(detail, title, c.get("active", True)),
-            "views": None,
-            "url": c.get("url", ""),
-            "images": c.get("images", [])[:10],
-            "thumbs": [re.sub(r"(\.\w+)$", r"-300x225\1", s) for s in c.get("images", [])[:10]],
-            "features": sorted(set(site_features_of(detail)) | set(features_of(blob))),
-            "notes": notes_of(desc, title),
-            "seller": seller,
-            "seller_type": seller_type,
-            "added": added_of(detail),
-            "first_seen": c.get("first_seen"),
-        }
-        return v
+  const best=list[0];
+  if(rival){
+    const rank=list.indexOf(rival)+1;
+    $('#result').innerHTML = compareHTML(best, rival, rank);
+  }else{
+    const second=list[1];
+    $('#result').innerHTML = pickHTML(best) + (second? runnerHTML(best,second,2):'');
+    const ex=$('#exbtn');
+    if(ex) ex.addEventListener('click',()=>exclude(best.v));
+  }
 
-    THIS_YEAR = datetime.date.today().year
+}
 
-    def sane(v):
-        """Sellers mistype. A 2121 van or a £12,345 'WANTED' advert would wreck the
-        normalised ranges every score depends on, so null the value instead."""
-        if v["year"] and not (1985 <= v["year"] <= THIS_YEAR + 1):
-            v["notes"] = (v["notes"] or "") + f" [year given as {v['year']} — not usable]"
-            v["year"] = None
-        if v["price"] and v["price"] < 4000:
-            v["price"] = None
-        if v["miles"] is not None and v["miles"] < 100:
-            v["miles"] = None
-        if re.search(r"\bwanted\b", v["title"], re.I):
-            v["status"] = "wanted"
-        return v
+const pad=n=>String(n).padStart(2,'0');
+const tag=v=>'['+(v.listing_id||pad(v.id))+']';
+const glance=v=>[v.gen||'—', gbp(v.price), v.year, mi(v.miles)].join(' <em>·</em> ');
 
-    vans, problems, nodetail = [], [], 0
-    for i, c in enumerate(sorted(raw, key=lambda x: -(x.get("price") or 0)), 1):
-        v = sane(build_one(i, c))
-        if not (c.get("detail_text") or ""):
-            nodetail += 1
-        missing = [k for k in ("price", "miles", "year", "trans") if v[k] is None]
-        if missing:
-            problems.append((v["title"][:50], missing, v["url"]))
-        vans.append(v)
+function drawRibbon(list){
+  const r=$('#ribbon'); r.hidden=false;
+  const top=list[0].v;
+  r.innerHTML =
+    '<div class="now"><span class="rank">'+pad(1)+'</span>'+
+      '<span class="sitenum">'+tag(top)+'</span>'+
+      '<span class="nowname">'+top.title+'</span>'+
+      '<span class="nowmeta">'+glance(top)+'</span>'+
+      '<span class="nowscore">'+list[0].s.toFixed(1)+'</span></div>'+
+    '<div class="ticks">'+ list.map((x,i)=>{
+      const cls = i===0 ? (inCompare()? 'tick back' : 'tick lead')
+                        : (vanKey(x.v)===cmpKey ? 'tick cmp' : 'tick');
+      const label = (i===0 && inCompare()) ? 'BACK' : pad(i+1);
+      return '<button class="'+cls+'" data-i="'+i+'" '+
+        'title="'+(i===0&&inCompare()? 'Leave the comparison'
+          : tag(x.v)+' '+x.v.title.replace(/"/g,'&quot;')+' — '+
+            (x.v.gen||'')+' '+gbp(x.v.price)+' '+x.v.year+' '+mi(x.v.miles)+
+            ' — fit '+x.s.toFixed(1))+'">'+label+'</button>';
+    }).join('')+
+    '</div>';
+  r.querySelectorAll('.tick').forEach(b=>b.addEventListener('click',()=>{
+    const i=+b.dataset.i;
+    if(i===0){ if(inCompare()){ cmpKey=null; render(); } return; }
+    cmpKey=vanKey(list[i].v);
+    render();
+  }));
+}
 
-    OUT.write_text(json.dumps({
-        "source": SOURCE,
-        "scanned": datetime.date.today().isoformat(),
-        "note": "Built by build_vans.py from raw.json. Price, mileage, year, gearbox, "
-                "colour and photos come from the listing cards; features and location "
-                "are inferred from the advert text.",
-        "vans": vans,
-    }, indent=2, ensure_ascii=False), encoding="utf-8")
+function pickHTML({v,s}){
+  const feats = FEATURES.filter(([k])=>v.features.includes(k));
+  return '<div class="pick">'+
+    '<div class="score"><b>'+s.toFixed(1)+'</b><span class="eyebrow">fit</span></div>'+
+    '<div class="eyebrow">Best fit &nbsp;'+tag(v)+'</div><h2>'+v.title+'</h2>'+
+    (v.images && v.images.length
+      ? '<a class="thumbs" href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">'+v.images.map((src,i)=>{
+          const t=(v.thumbs&&v.thumbs[i])||src;
+          return '<img src="'+t+'" data-full="'+src+'" alt="" loading="lazy" '+
+                 'onerror="if(this.src!==this.dataset.full)this.src=this.dataset.full">';
+        }).join('')+'</a>'
+      : '<p class="nothumbs">No photos in the data for this advert yet.</p>')+
+    '<div class="headline">'+
+      f('Price',gbp(v.price))+f('Mileage',v.miles.toLocaleString('en-GB'))+f('Year',v.year)+
+      f('Gearbox',v.gearbox)+f('Engine',(v.bhp?v.bhp+'bhp':'—')+(v.biturbo===true?' BiTDI':v.biturbo===null?' (?)':''))+
+      f('Where', v.location || '—')+
+    '</div>'+
+    '<p class="notes">'+v.notes+'</p>'+
+    '<div class="chips">'+
+      '<span class="chip on">'+v.gen+' '+v.model+'</span>'+
+      (v.fourmotion?'<span class="chip on">4Motion</span>':'')+
+      feats.map(([,l])=>'<span class="chip">'+l+'</span>').join('')+
+    '</div>'+
+    '<a class="go" href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">'+
+      (v.url?'Open this advert':'Find this advert on the classifieds page')+'</a>'+
+    '<button type="button" class="exbtn" id="exbtn">Exclude this one</button>'+
+  '</div>';
+}
+const f=(l,v)=>'<div><span>'+l+'</span><b>'+v+'</b></div>';
 
-    withimg = sum(1 for v in vans if v["images"])
-    print(f"wrote vans.json — {len(vans)} vans, {withimg} with photos, "
-          f"{sum(1 for v in vans if v['status']=='available')} available")
-    if nodetail:
-        print(f"{nodetail} adverts have no description "
-              f"(run without --no-details for features and locations)")
-    write_report(vans, build_one)
+// ---- two-column comparison -------------------------------------------
+// Only differences are listed. Green means this column wins on that point,
+// red means it loses; things neither van can be better at stay grey.
+function diffRows(a,b){
+  const rows=[];
+  const num=(label,ka,fmt,lowerWins)=>{
+    if(a[ka]===b[ka]) return;
+    const aWins = lowerWins ? a[ka]<b[ka] : a[ka]>b[ka];
+    rows.push({label, a:fmt(a[ka]), b:fmt(b[ka]), aCls:aWins?'better':'worse', bCls:aWins?'worse':'better'});
+  };
+  num('Price','price',gbp,true);
+  num('Mileage','miles',mi,true);
+  num('Year','year',String,false);
 
-    if problems:
-        print(f"\n{len(problems)} adverts have gaps:")
-        for title, missing, url in problems:
-            print(f"  {title:<52} missing {', '.join(missing)}")
+  FEATURES.forEach(([k,label])=>{
+    const A=a.features.includes(k), B=b.features.includes(k);
+    if(A===B) return;
+    rows.push({label:'', a:(A?'has ':'no ')+label.toLowerCase(), b:(B?'has ':'no ')+label.toLowerCase(),
+               aCls:A?'better':'worse', bCls:B?'better':'worse'});
+  });
 
+  const plain=(label,va,vb)=>{ if(va!==vb) rows.push({label, a:va||'—', b:vb||'—', aCls:'', bCls:''}); };
+  plain('Type', (a.gen||'')+' '+(a.model||''), (b.gen||'')+' '+(b.model||''));
+  plain('Gearbox', a.gearbox, b.gearbox);
+  plain('Engine', a.bhp?a.bhp+'bhp':null, b.bhp?b.bhp+'bhp':null);
+  plain('4Motion', a.fourmotion?'yes':'no', b.fourmotion?'yes':'no');
+  plain('Where', a.location, b.location);
+  return rows;
+}
 
-if __name__ == "__main__":
-    main()
+function sideHTML(x, rank, rows, which, rivalRank){
+  const v=x.v, mine=which==='a'?'a':'b', cls=which==='a'?'aCls':'bCls';
+  const shots=(v.images||[]).slice(0,4);
+  const list = rows.map(r=>
+    '<li class="'+r[cls]+'">'+(r.label?'<span class="what">'+r.label+'</span> ':'')+
+    '<b>'+r[mine]+'</b></li>').join('');
+  return '<div class="side'+(which==='b'?' rival':'')+'">'+
+    '<div class="eyebrow">'+(which==='a'? 'Number 1 — your settings'
+                                        : 'Comparing with '+pad(rivalRank))+'</div>'+
+    '<h3>'+tag(v)+' '+v.title+'</h3>'+
+    '<div class="meta">'+(v.gen||'—')+' · '+gbp(v.price)+' · '+v.year+' · '+mi(v.miles)+
+      ' · '+(v.location||'—')+'</div>'+
+    '<span class="fit">'+x.s.toFixed(1)+'</span>'+
+    (shots.length? '<a class="thumbs" href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">'+
+        shots.map((src,i)=>{ const t=(v.thumbs&&v.thumbs[i])||src;
+          return '<img src="'+t+'" data-full="'+src+'" alt="" loading="lazy" '+
+                 'onerror="if(this.src!==this.dataset.full)this.src=this.dataset.full">'; }).join('')+
+      '</a>' : '')+
+    (rows.length? '<ul class="difflist">'+list+'</ul>'
+                : '<p class="samenote">Nothing to separate these two on the things being compared.</p>')+
+    '<a class="go" href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">Open this advert</a>'+
+  '</div>';
+}
+
+function compareHTML(best, rival, rank){
+  const rows=diffRows(best.v, rival.v);
+  return '<div class="compare">'+
+      sideHTML(best,1,rows,'a',rank)+
+      sideHTML(rival,rank,rows,'b',rank)+
+    '</div>'+
+    '<div class="cmpbar">'+
+      '<span class="hint">Move any slider and the left column becomes whatever wins next — '+
+        tag(rival.v)+' stays put on the right so you can keep measuring against it. '+
+        'BACK in the strip above leaves this view.</span>'+
+    '</div>';
+}
+
+function runnerHTML(best,second,rank){
+  const v=second.v;
+  return '<div class="runner">'+
+    '<div class="row"><span class="eyebrow">Runner-up</span>'+
+      '<h3><span class="sitenum">'+tag(v)+'</span> '+v.title+'</h3>'+
+      '<span class="meta">'+gbp(v.price)+' · '+mi(v.miles)+' · '+v.year+' · '+v.location+' · fit '+second.s.toFixed(1)+'</span>'+
+      '<a class="go small" href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">Open advert</a>'+
+    '</div>'+
+    '<p class="cmphint">Press '+pad(rank)+' in the strip above to compare it with the winner side by side.</p>'+
+  '</div>';
+}
+
+// Find weights that put `target` top of `pool`. Scores share a denominator, so
+// target beats v exactly when  w . (val(target) - val(v)) > 0  — a linear feasibility
+// problem, solved by nudging w toward whichever rival is beating it hardest.
+// The sliders you land on when the page opens. The list below always ranks on
+// these, whatever the sliders currently say, so it's a stable reference point.
+const DEFAULT_W = {miles:70, year:45, price:55, kitchen:60, fsh:55, cambelt:40, heater:25, awning:20};
+
+function defaultScore(v){
+  let n=0,d=0;
+  for(const [k,w] of Object.entries(DEFAULT_W)){ n+=w*val(v,k); d+=w; }
+  return d? 100*n/d : 0;
+}
+
+function newestGroup(vans){
+  const seen=vans.map(v=>v.first_seen).filter(Boolean);
+  const dates=[...new Set(seen)].sort();
+  if(dates.length>1){
+    const latest=dates[dates.length-1];
+    return {mode:"scan", when:latest, vans:vans.filter(v=>v.first_seen===latest)};
+  }
+  // one scan only (or no stamps yet) — fall back to the site's own "added" date
+  const cut=Date.now()-14*864e5;
+  const recent=vans.filter(v=>v.added && Date.parse(v.added)>cut);
+  return {mode:"added", when:null, vans:recent};
+}
+
+function drawNewly(){
+  const box=$("#newly");
+  const pool=DATA.vans.filter(v=>v.miles!==null && v.year!==null && v.price!==null
+                                 && !EXCLUDED.has(vanKey(v)) && v.status==="available");
+  const grp=newestGroup(pool);
+  if(!grp.vans.length){ box.hidden=true; return; }
+
+  const ranked=pool.slice().sort((a,b)=>defaultScore(b)-defaultScore(a));
+  const rows=grp.vans.slice().sort((a,b)=>defaultScore(b)-defaultScore(a)).map(v=>{
+    const place=ranked.findIndex(x=>x===v)+1;
+    return '<div class="newrow">'+
+      '<span class="place">#'+place+'/'+ranked.length+'</span>'+
+      '<a href="'+(v.url||DATA.source)+'" target="_blank" rel="noopener">'+
+        tag(v)+' '+v.title+'</a>'+
+      '<span class="glance">'+(v.gen||'—')+' · '+gbp(v.price)+' · '+v.year+' · '+
+        mi(v.miles)+' · '+(v.location||'—')+'</span>'+
+    '</div>';
+  }).join('');
+
+  box.hidden=false;
+  box.innerHTML='<h2>New since the last update</h2>'+
+    '<p class="lede">'+
+      (grp.mode==="scan"
+        ? grp.vans.length+' advert'+(grp.vans.length===1?'':'s')+' first appeared in the scrape of '+grp.when+'.'
+        : 'No earlier scrape to compare against yet, so these are the adverts the site itself listed in the last fortnight.')+
+      ' Placings are against the default sliders, not your current ones.</p>'+ rows;
+}
+
+// ---- saving and restoring a set of settings ----------------------------
+function collectState(){
+  return {
+    app:"california-picker", v:1, saved:new Date().toISOString().slice(0,10),
+    weights:{...W}, limits:{...LIMITS},
+    seg:Object.fromEntries(["trans","biturbo","fourmotion","status"].map(n=>[n,seg(n)])),
+    gen:checked("gen"), model:checked("model"), excluded:[...EXCLUDED]
+  };
+}
+
+function applyState(st){
+  if(!st || typeof st!=="object" || !st.weights) throw new Error("not a settings file");
+  Object.entries(st.weights).forEach(([k,val])=>{
+    if(!(k in W)) return;
+    W[k]=+val;
+    const el=document.getElementById("w-"+k);
+    if(el){ el.value=W[k]; document.getElementById("wv-"+k).textContent=W[k]; }
+  });
+  Object.entries(st.limits||{}).forEach(([k,val])=>{
+    const el=document.getElementById("lim-"+k);
+    if(el){ el.value=val; el.dispatchEvent(new Event("input")); }
+  });
+  Object.entries(st.seg||{}).forEach(([name,val])=>{
+    const el=document.querySelector('input[name="'+name+'"][value="'+val+'"]');
+    if(el) el.checked=true;
+  });
+  [["gen",st.gen],["model",st.model]].forEach(([name,vals])=>{
+    if(!Array.isArray(vals)) return;
+    document.querySelectorAll('input[name="'+name+'"]').forEach(b=>{ b.checked=vals.includes(b.value); });
+  });
+  resort(); markZeros(); render(); wireTools();
+}
+
+function settingsLink(){
+  const url=new URL(location.href);
+  url.hash="s="+encodeURIComponent(JSON.stringify(collectState()));
+  return url.toString();
+}
+
+function say(msg){
+  const el=$("#toolmsg"); el.textContent=msg;
+  clearTimeout(say._t); say._t=setTimeout(()=>{ el.textContent=""; }, 4000);
+}
+
+function wireTools(){
+  $("#tools").hidden=false;
+
+  $("#save").addEventListener("click",()=>{
+    const st=collectState();
+    const json=JSON.stringify(st,null,2);
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([json],{type:"application/json"}));
+    a.download="van-picker-settings-"+st.saved+".json";
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    history.replaceState(null,"",new URL(settingsLink()).hash);
+    say("Saved. The address bar now holds these settings too — bookmark it.");
+  });
+
+  $("#share").addEventListener("click",async ()=>{
+    const link=settingsLink();
+    history.replaceState(null,"",new URL(link).hash);
+    if(navigator.share){
+      try{ await navigator.share({title:"California picker — my filters", url:link}); return; }
+      catch(err){ if(err.name==="AbortError") return; }   // they closed the share sheet
+    }
+    try{
+      await navigator.clipboard.writeText(link);
+      say("Link copied — opens with your filters already set.");
+    }catch(err){
+      window.prompt("Copy this link:", link);
+    }
+  });
+
+  $("#load").addEventListener("click",()=>$("#loadFile").click());
+  $("#loadFile").addEventListener("change",e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{ applyState(JSON.parse(r.result)); say("Loaded "+f.name); }
+      catch(err){ say("That file isn't a settings file."); }
+    };
+    r.onerror=()=>say("Couldn't read that file.");
+    r.readAsText(f);
+    e.target.value="";
+  });
+
+  if(location.hash.startsWith("#s=")){
+    try{ applyState(JSON.parse(decodeURIComponent(location.hash.slice(3)))); say("Settings restored from the link."); }
+    catch(err){ say("The settings in that link couldn't be read."); }
+  }
+}
+
+// hollow thumb when a weight is switched off
+function markZeros(){
+  [...CORE,...FEATURES].forEach(([k])=>{
+    const el=document.getElementById('w-'+k);
+    if(el) el.classList.toggle('zero', +el.value===0);
+  });
+}
+document.addEventListener('input',e=>{
+  if(e.target.type==='range' && e.target.id.startsWith('w-'))
+    e.target.classList.toggle('zero', +e.target.value===0);
+});
+</script>
+</body>
+</html>
