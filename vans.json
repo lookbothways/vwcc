@@ -1,6 +1,6 @@
 {
   "source": "https://vwcaliforniaclub.com/classifieds/",
-  "scanned": "2026-08-24",
+  "scanned": "2026-08-25",
   "note": "Built by build_vans.py from raw.json. Price, mileage, year, gearbox, colour and photos come from the listing cards; features and location are inferred from the advert text.",
   "vans": [
     {
@@ -70,7 +70,8 @@
       "notes": "Proud to offer this immaculate California Ocean T7 in Candy White and Starlight Blue Metallic paint and 19” Halmstadt Black alloy wheels.",
       "seller": "Fiona Minchington",
       "seller_type": "private",
-      "added": "August 17, 2026"
+      "added": "August 17, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 2,
@@ -130,7 +131,8 @@
       "notes": "One-owner 2021 VW Grand California 680, 8-speed automatic with extremely rare 4-motion and locking differential options.",
       "seller": "Ian Harper",
       "seller_type": "private",
-      "added": "August 17, 2026"
+      "added": "August 17, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 3,
@@ -168,6 +170,7 @@
         "electricdoor",
         "fsh",
         "heater",
+        "kitchen",
         "leather",
         "ledlights",
         "parksensors",
@@ -179,7 +182,8 @@
       "notes": "Carefully maintained from new and prepared to the highest standard, this vehicle combines luxury, practicality, and reliability in one beautifully presented package.",
       "seller": "Jamie Lindsay",
       "seller_type": "private",
-      "added": "July 20, 2026"
+      "added": "July 20, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 4,
@@ -255,7 +259,8 @@
       "notes": "",
       "seller": null,
       "seller_type": null,
-      "added": "July 28, 2026"
+      "added": "July 28, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 5,
@@ -330,7 +335,8 @@
       "notes": "Switchable Tailgate Lights, Stunning Vehicle open to any inspection, Full Book Pack with both Remote Keys, Water Keys and safe Keys, plus Night Heater Remote, Immaculate Condition finished in Stunning Cherry Red, all receipts present.",
       "seller": null,
       "seller_type": null,
-      "added": "July 02, 2026"
+      "added": "July 02, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 6,
@@ -401,7 +407,8 @@
       "notes": "The combination of the powerful 204PS diesel engine, smooth DSG automatic gearbox and 4MOTION all-wheel drive makes this one of the most capable and sought-after California models available.",
       "seller": "Kevin Grant",
       "seller_type": "private",
-      "added": "June 18, 2026"
+      "added": "June 18, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 7,
@@ -467,14 +474,15 @@
       "notes": "2025, Volkswagen California Ocean, 2.0 TDI (150ps), DSG.",
       "seller": "Aled James",
       "seller_type": "private",
-      "added": "June 07, 2026"
+      "added": "June 07, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 8,
       "listing_id": "94103",
       "title": "VW CALIFORNIA OCEAN T6.1",
       "price": 65000,
-      "miles": 16400,
+      "miles": 16500,
       "year": 2024,
       "gen": "T6.1",
       "model": "Ocean",
@@ -492,7 +500,6 @@
       "url": "https://vwcaliforniaclub.com/classifieds/listings/vw-california-ocean-t6-1-25/",
       "images": [
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/IMG_0549.jpeg",
-        "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-10.jpg",
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-12.jpg",
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-13.jpg",
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-14.jpg",
@@ -500,11 +507,11 @@
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/image-1.jpg",
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-7.jpg",
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-8.jpg",
-        "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/IMG_0517.jpeg"
+        "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/IMG_0517.jpeg",
+        "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/IMG_0544.jpeg"
       ],
       "thumbs": [
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/IMG_0549-300x225.jpeg",
-        "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-10-300x225.jpg",
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-12-300x225.jpg",
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-13-300x225.jpg",
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-14-300x225.jpg",
@@ -512,7 +519,8 @@
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/image-1-300x225.jpg",
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-7-300x225.jpg",
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/07/image-8-300x225.jpg",
-        "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/IMG_0517-300x225.jpeg"
+        "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/IMG_0517-300x225.jpeg",
+        "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/IMG_0544-300x225.jpeg"
       ],
       "features": [
         "aircon",
@@ -524,6 +532,7 @@
         "cruise",
         "fsh",
         "heater",
+        "kitchen",
         "leather",
         "ledlights",
         "oneowner",
@@ -537,7 +546,8 @@
       "notes": "Vw California Ocean 6.1 204bhp, DSG, one owner form new, immaculate inside and out, registered June 21st 2024, dry stored in heated garage over winter.",
       "seller": "Adrian",
       "seller_type": "private",
-      "added": "August 15, 2026"
+      "added": "August 15, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 9,
@@ -612,7 +622,8 @@
       "notes": "Full VW Approved Used Warranty until May 2027 with an option to extend for a further 2 years with a VW all-in warranty, for extra piece of mind.",
       "seller": "Mark Aspin",
       "seller_type": "private",
-      "added": "July 22, 2026"
+      "added": "July 22, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 10,
@@ -666,6 +677,7 @@
         "cruise",
         "electricdoor",
         "heater",
+        "kitchen",
         "leather",
         "ledlights",
         "parksensors",
@@ -677,7 +689,8 @@
       "notes": "",
       "seller": "Paul Hayward",
       "seller_type": "private",
-      "added": "July 16, 2026"
+      "added": "July 16, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 11,
@@ -733,6 +746,7 @@
         "electricdoor",
         "fsh",
         "heater",
+        "kitchen",
         "ledlights",
         "oneowner",
         "parksensors",
@@ -745,7 +759,8 @@
       "notes": "Included in the sale are a full set of genuine VW Ocean Seat Covers which have been in use from the collection of the vehicle.",
       "seller": "David Gardner",
       "seller_type": "private",
-      "added": "August 22, 2026"
+      "added": "August 22, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 12,
@@ -799,6 +814,7 @@
         "centrallocking",
         "cruise",
         "heater",
+        "kitchen",
         "leather",
         "ledlights",
         "oneowner",
@@ -811,7 +827,8 @@
       "notes": "Fortana Red California Ocean T6.1 in excellent condition and with only 16,700 miles.",
       "seller": "Jeremy",
       "seller_type": "private",
-      "added": "August 10, 2026"
+      "added": "August 10, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 13,
@@ -867,6 +884,7 @@
         "centrallocking",
         "cruise",
         "heater",
+        "kitchen",
         "leather",
         "ledlights",
         "parksensors",
@@ -878,7 +896,8 @@
       "notes": "Comes with removable 5th seat for great flexibility.",
       "seller": "D Robinson",
       "seller_type": "private",
-      "added": "August 06, 2026"
+      "added": "August 06, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 14,
@@ -932,6 +951,7 @@
         "centrallocking",
         "cruise",
         "heater",
+        "kitchen",
         "leather",
         "ledlights",
         "parksensors",
@@ -942,7 +962,8 @@
       "notes": "6.1 Starlight blue metallic colour which in my opinion is the best colour and took me a while to find in this colour with the right specs.",
       "seller": "Szabolcs Szilagyi",
       "seller_type": "private",
-      "added": "August 16, 2026"
+      "added": "August 16, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 15,
@@ -997,6 +1018,7 @@
         "euro6",
         "heatedseats",
         "heater",
+        "kitchen",
         "parksensors",
         "reversecam",
         "satnav",
@@ -1006,7 +1028,8 @@
       "notes": "VW California Ocean 204 BHP DSG Reflex Silver with 16,850 miles, a 24 reg and the 5+ Promise plan.",
       "seller": "Paul Martin",
       "seller_type": "private",
-      "added": "August 15, 2026"
+      "added": "August 15, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 16,
@@ -1080,7 +1103,8 @@
       "notes": "",
       "seller": null,
       "seller_type": null,
-      "added": "July 06, 2026"
+      "added": "July 06, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 17,
@@ -1135,6 +1159,7 @@
         "cruise",
         "fsh",
         "heater",
+        "kitchen",
         "ledlights",
         "parksensors",
         "poptop",
@@ -1145,7 +1170,8 @@
       "notes": "Full VW service history, official VW extended warranty and service/MOT plan running until December 2027.",
       "seller": "Terry Kirkwood",
       "seller_type": "private",
-      "added": "July 22, 2026"
+      "added": "July 22, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 18,
@@ -1190,6 +1216,7 @@
         "cruise",
         "fsh",
         "heater",
+        "kitchen",
         "ledlights",
         "parksensors",
         "reversecam"
@@ -1197,7 +1224,8 @@
       "notes": "Extras include storage pack and comfort mattress.",
       "seller": "Grant Douglas",
       "seller_type": "private",
-      "added": "July 16, 2026"
+      "added": "July 16, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 19,
@@ -1251,6 +1279,7 @@
         "centrallocking",
         "cruise",
         "heater",
+        "kitchen",
         "leather",
         "ledlights",
         "parksensors",
@@ -1263,7 +1292,8 @@
       "notes": "We are selling this top specification California Ocean 4 Motion 204PS , which we bought new in June 2021.",
       "seller": "Kenneth Davis",
       "seller_type": "private",
-      "added": "August 03, 2026"
+      "added": "August 03, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 20,
@@ -1311,6 +1341,7 @@
         "cruise",
         "fsh",
         "heater",
+        "kitchen",
         "parksensors",
         "poptop",
         "reversecam",
@@ -1321,7 +1352,8 @@
       "notes": "VW Calafornia Ocean 4motion, 2ltdi 204bhp, 32,000miles, factory fitted tow bar,full service history, extended VW warranty.",
       "seller": "David Beattie",
       "seller_type": "private",
-      "added": "August 14, 2026"
+      "added": "August 14, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 21,
@@ -1377,6 +1409,7 @@
         "cruise",
         "electricdoor",
         "heater",
+        "kitchen",
         "leather",
         "ledlights",
         "parksensors",
@@ -1387,7 +1420,8 @@
       "notes": "Privately owned stunning Ocean in sort after Ascot Grey with rare factory fitted sport pack New vehicle forces reluctant sale of our much loved California.",
       "seller": "Steve Floyd",
       "seller_type": "private",
-      "added": "July 28, 2026"
+      "added": "July 28, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 22,
@@ -1443,6 +1477,7 @@
         "cruise",
         "fsh",
         "heater",
+        "kitchen",
         "ledlights",
         "parksensors",
         "reversecam",
@@ -1451,7 +1486,8 @@
       "notes": "A doddle to put up (inflated beams), only used maybe three times Thule levelling ramps",
       "seller": "Nathaniel Read",
       "seller_type": "private",
-      "added": "June 05, 2026"
+      "added": "June 05, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 23,
@@ -1518,7 +1554,8 @@
       "notes": "A modern day VW Classic California Beach In stunning two tone candy white / copper bronze 1 Owner - enthusiast configured!",
       "seller": "George Cox",
       "seller_type": "private",
-      "added": "July 06, 2026"
+      "added": "July 06, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 24,
@@ -1593,7 +1630,8 @@
       "notes": "Switchable Tailgate Lights, Stunning Vehicle open to any inspection, Full Book Pack with 2 Remote Keys, Water Keys, plus Night Heater Remote, Immaculate Condition finished in Forenza Red Metallic.",
       "seller": null,
       "seller_type": null,
-      "added": "July 23, 2026"
+      "added": "July 23, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 25,
@@ -1601,7 +1639,7 @@
       "title": "VW CALIFORNIA OCEAN T6.1",
       "price": 54990,
       "miles": 71100,
-      "year": 2121,
+      "year": null,
       "gen": "T6.1",
       "model": "Ocean",
       "trans": "auto",
@@ -1658,10 +1696,11 @@
         "solar",
         "warranty"
       ],
-      "notes": "Cuckfield motor company are pleased to offer for sale this stunning VW California TDI 4 MOTION automatic.",
+      "notes": "Cuckfield motor company are pleased to offer for sale this stunning VW California TDI 4 MOTION automatic. [year given as 2121 — not usable]",
       "seller": "Paul Roberts",
       "seller_type": "private",
-      "added": "August 15, 2026"
+      "added": "August 15, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 26,
@@ -1731,7 +1770,8 @@
       "notes": "It has been exceptionally well cared for throughout and is ready to enjoy.",
       "seller": "Laura Irwin",
       "seller_type": "private",
-      "added": "August 23, 2026"
+      "added": "August 23, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 27,
@@ -1766,6 +1806,7 @@
         "centrallocking",
         "cruise",
         "heater",
+        "kitchen",
         "ledlights",
         "parksensors",
         "satnav",
@@ -1774,7 +1815,8 @@
       "notes": "Only selling to upgrade to Eriba Car for more European holidays.",
       "seller": "Andy Willock",
       "seller_type": "private",
-      "added": "August 10, 2026"
+      "added": "August 10, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 28,
@@ -1845,7 +1887,8 @@
       "notes": "First registered on 15/12/2020, this late-2020 (70-plate) model features the smooth 7-speed DSG automatic transmission paired with the efficient yet powerful 2.0 TDI engine.",
       "seller": "David Godwin",
       "seller_type": "private",
-      "added": "June 11, 2026"
+      "added": "June 11, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 29,
@@ -1915,7 +1958,8 @@
       "notes": "A beautifully maintained and highly specified Volkswagen California Ocean, finished in stunning Indium Grey / Deep Black Pearl two-tone paintwork.",
       "seller": "Natalie Dunkley",
       "seller_type": "private",
-      "added": "June 29, 2026"
+      "added": "June 29, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 30,
@@ -1986,7 +2030,8 @@
       "notes": "Cuckfield Motor Company are delighted to offer for sale this well presented 1 Owner, VW California Ocean TDi.",
       "seller": "Paul Roberts",
       "seller_type": "private",
-      "added": "August 15, 2026"
+      "added": "August 15, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 31,
@@ -2052,7 +2097,8 @@
       "notes": "Cuckfield motor Company are pleased to offer for sale this stunning VW California Ocean TDI automatic.",
       "seller": "Paul Roberts",
       "seller_type": "private",
-      "added": "July 21, 2026"
+      "added": "July 21, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 32,
@@ -2120,7 +2166,8 @@
       "notes": "A well-maintained and well-equipped T6 California Ocean that has been a fantastic vehicle to own.",
       "seller": "Sarah Griffin",
       "seller_type": "private",
-      "added": "July 10, 2026"
+      "added": "July 10, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 33,
@@ -2192,7 +2239,8 @@
       "notes": "Switchable Tailgate Lights, Stunning Vehicle open to any inspection, Full Book Pack with 4 Remote Keys, Water Keys, Safe Keys plus Night Heater Remote, Immaculate Condition finished in Black Berry Metallic.",
       "seller": null,
       "seller_type": null,
-      "added": "June 12, 2026"
+      "added": "June 12, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 34,
@@ -2247,6 +2295,7 @@
         "cruise",
         "electricdoor",
         "heater",
+        "kitchen",
         "ledlights",
         "parksensors",
         "reversecam",
@@ -2257,7 +2306,8 @@
       "notes": "this is an ex demonstrator which was purchased New from the main dealer,this is one of the best California oceans around.",
       "seller": "Paul Neal",
       "seller_type": "private",
-      "added": "June 11, 2026"
+      "added": "June 11, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 35,
@@ -2325,7 +2375,8 @@
       "notes": "Cuckfield Motor Company are delighted to offer for sale this well presented and well maintained VW California Ocean TDi DSG.",
       "seller": "Paul Roberts",
       "seller_type": "private",
-      "added": "August 15, 2026"
+      "added": "August 15, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 36,
@@ -2393,7 +2444,8 @@
       "notes": "The van is in perfect condition ready to drive off.",
       "seller": "Sheila Samuels",
       "seller_type": "private",
-      "added": "July 13, 2026"
+      "added": "July 13, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 37,
@@ -2445,6 +2497,7 @@
         "cruise",
         "electricdoor",
         "heater",
+        "kitchen",
         "ledlights",
         "parksensors",
         "reversecam",
@@ -2454,7 +2507,8 @@
       "notes": "Full service including timing belt, water pump and auxiliary belts carried out March 2026.",
       "seller": "John Rossington",
       "seller_type": "private",
-      "added": "July 07, 2026"
+      "added": "July 07, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 38,
@@ -2531,7 +2585,8 @@
       "notes": "1 Owner, Ocean Edition 1 of 40 We are proud to offer this exceptionally High Spec'd, and Rare Ocean Edition, only about 80 total units officially came to the UK market (evenly split between Beach and Ocean trims).",
       "seller": null,
       "seller_type": null,
-      "added": "August 14, 2026"
+      "added": "August 14, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 39,
@@ -2603,7 +2658,8 @@
       "notes": "2018 (2019 SPEC) VOLKSWAGEN CALIFORNIA OCEAN 2.0 TDI 150 DSG – EURO 6 – 42,750 MILES Reluctantly selling our much-loved California as we've decided to go in a different direction with our camping trips.",
       "seller": "Rich Green",
       "seller_type": "private",
-      "added": "July 31, 2026"
+      "added": "July 31, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 40,
@@ -2669,7 +2725,8 @@
       "notes": "Very Rare Grape Yellow California Beach October 2019 Mint Condition 2.0 tdi 150tdi 6 speed manual Full VW service history .",
       "seller": "Christian Welsh",
       "seller_type": "private",
-      "added": "July 21, 2026"
+      "added": "July 21, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 41,
@@ -2743,7 +2800,8 @@
       "notes": "Art Velour Interior, Electric Side Door, 4 Seater with 4 Belts, FSH.",
       "seller": null,
       "seller_type": null,
-      "added": "August 14, 2026"
+      "added": "August 14, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 42,
@@ -2813,7 +2871,8 @@
       "notes": "2018 VW California Ocean Special Edition - every extra available!",
       "seller": "Grant Mckelvie",
       "seller_type": "private",
-      "added": "July 13, 2026"
+      "added": "July 13, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 43,
@@ -2860,6 +2919,7 @@
         "electricdoor",
         "fsh",
         "heater",
+        "kitchen",
         "leather",
         "parksensors",
         "satnav"
@@ -2867,7 +2927,8 @@
       "notes": "Selling my 2018 California Ocean starlight blue Just need a bit more space 38,838 miles Completely reliable full VW service history 2018 Volkswagen California Ocean 2.0 TDI DSG.",
       "seller": "Siobhan Wright",
       "seller_type": "private",
-      "added": "July 20, 2026"
+      "added": "July 20, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 44,
@@ -2932,7 +2993,8 @@
       "notes": "We have owned and loved our VW California Ocean since new, travelling around the UK, Ireland and France.",
       "seller": "Chris Irwin",
       "seller_type": "private",
-      "added": "August 21, 2026"
+      "added": "August 21, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 45,
@@ -2989,6 +3051,7 @@
         "electricdoor",
         "fsh",
         "heater",
+        "kitchen",
         "leather",
         "parksensors",
         "poptop",
@@ -3000,7 +3063,8 @@
       "notes": "2017 Volkswagen California Ocean 2.0 TDI DSG.",
       "seller": "Paul Evans",
       "seller_type": "private",
-      "added": "July 31, 2026"
+      "added": "July 31, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 46,
@@ -3063,7 +3127,8 @@
       "notes": "2017 VW California Ocean — 150ps DSG | 92,000 miles | Cherry Red Thoroughly maintained and ready to use from day one — full history and significant mechanical investment detailed below.",
       "seller": "Stuart Reid",
       "seller_type": "private",
-      "added": "August 09, 2026"
+      "added": "August 09, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 47,
@@ -3113,6 +3178,7 @@
       "features": [
         "alloys",
         "awning",
+        "kitchen",
         "ledlights",
         "parksensors",
         "reversecam",
@@ -3122,7 +3188,8 @@
       "notes": "VW California Ocean 2.0 TDI 150 PS The best engine in my opinion – plenty of power for overtaking while still being economical (up to 40 mpg in optimal road conditions).",
       "seller": "James Parkin",
       "seller_type": "private",
-      "added": "August 04, 2026"
+      "added": "August 04, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 48,
@@ -3186,7 +3253,8 @@
       "notes": "Cuckfield motor Company are pleased to offer for sale this stunning VW California Ocean TDI Automatic 180ps.",
       "seller": "Paul Roberts",
       "seller_type": "private",
-      "added": "August 15, 2026"
+      "added": "August 15, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 49,
@@ -3249,7 +3317,8 @@
       "notes": "The California was first registered on 26 April 2016 by Lookers in Newcastle.",
       "seller": "Alexander James Currie",
       "seller_type": "private",
-      "added": "July 25, 2026"
+      "added": "July 25, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 50,
@@ -3316,7 +3385,8 @@
       "notes": "For sale is a beautiful VW California Beach with just over 35k miles.",
       "seller": "Mike Lowther",
       "seller_type": "private",
-      "added": "August 15, 2026"
+      "added": "August 15, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 51,
@@ -3372,6 +3442,7 @@
         "cruise",
         "electricdoor",
         "heater",
+        "kitchen",
         "leather",
         "parksensors",
         "satnav",
@@ -3380,13 +3451,14 @@
       "notes": "2016 VW CALIFORNIA OCEAN 150PS DSG – CHERRY RED – 67,000 MILES We have owned this California for the last four years and are selling only because we have moved to a larger campervan.",
       "seller": "Mark Hole",
       "seller_type": "private",
-      "added": "August 16, 2026"
+      "added": "August 16, 2026",
+      "first_seen": null
     },
     {
       "id": 52,
       "listing_id": "93281",
       "title": "VW CALIFORNIA BEACH T6",
-      "price": 37000,
+      "price": 36495,
       "miles": 102010,
       "year": 2017,
       "gen": "T6",
@@ -3439,7 +3511,8 @@
       "notes": "Vw T6 California Beach, just been serviced at Vw.",
       "seller": "Graham Hook",
       "seller_type": "private",
-      "added": "August 16, 2026"
+      "added": "August 16, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 53,
@@ -3506,7 +3579,8 @@
       "notes": "VW California Ocean 2.0BiTDI Bluemotion 204BHP Euro6 Auto (Semi-Auto 7sp) in Indium Grey A T6 '65 plate' Ocean with 91000 miles in very good condition with full-service history.",
       "seller": "Sarah Clarke",
       "seller_type": "private",
-      "added": "August 19, 2026"
+      "added": "August 19, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 54,
@@ -3562,12 +3636,14 @@
         "electricdoor",
         "fsh",
         "heater",
+        "kitchen",
         "parksensors"
       ],
       "notes": "VW CALIFORNIA SE 2015, Red VERY WELL LOOKED AFTER WITH LOADS OF ADVENTURES..",
       "seller": "Kelvin Connor",
       "seller_type": "private",
-      "added": "July 30, 2026"
+      "added": "July 30, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 55,
@@ -3639,7 +3715,8 @@
       "notes": "Open to reasonable offers - 2015 Volkswagen California 2.0 BiTDI BlueMotion Tech SE 180 (Ocean Body Type) 4 door Manual - Excellent Condition | FSH | Timing Belt Done | High Spec Camper - with many extras.",
       "seller": "James Bee",
       "seller_type": "private",
-      "added": "August 17, 2026"
+      "added": "August 17, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 56,
@@ -3707,7 +3784,8 @@
       "notes": "Cuckfield Motor Company are delighted to offer for sale this lovely 1 Owner, California Beach TDi.",
       "seller": "Paul Roberts",
       "seller_type": "private",
-      "added": "August 22, 2026"
+      "added": "August 22, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 57,
@@ -3774,7 +3852,8 @@
       "notes": "For Sale: VW California SE 5.1 Blue Motion TDi 180PS with Auto DSG gearbox.",
       "seller": "Richard Hawkes",
       "seller_type": "private",
-      "added": "August 02, 2026"
+      "added": "August 02, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 58,
@@ -3837,7 +3916,8 @@
       "notes": "OVERVIEW A much-loved and well-cared-for 2015 Volkswagen California Beach 2.0 TDI 140 PS 6-speed manual with just 68,000 miles and a Full Service History.",
       "seller": "Calum Land",
       "seller_type": "private",
-      "added": "August 14, 2026"
+      "added": "August 14, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 59,
@@ -3902,7 +3982,8 @@
       "notes": "Reduced to £32500 as we are looking for a quick sale.",
       "seller": "Sarah Turner",
       "seller_type": "private",
-      "added": "July 01, 2026"
+      "added": "July 01, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 60,
@@ -3960,6 +4041,7 @@
         "fsh",
         "heatedseats",
         "heater",
+        "kitchen",
         "leather",
         "ledlights",
         "parksensors",
@@ -3973,7 +4055,8 @@
       "notes": "2014 VW California SE with full service history.",
       "seller": "Andy Freestone",
       "seller_type": "private",
-      "added": "July 05, 2026"
+      "added": "July 05, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 61,
@@ -4025,7 +4108,6 @@
         "bikerack",
         "centrallocking",
         "fsh",
-        "kitchen",
         "parksensors",
         "tinted",
         "towbar"
@@ -4033,7 +4115,8 @@
       "notes": "A much-loved and well-cared-for late 2014 Volkswagen California Beach with just 68,500 miles, finished in metallic grey.",
       "seller": "Phil Jones",
       "seller_type": "private",
-      "added": "August 19, 2026"
+      "added": "August 19, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 62,
@@ -4081,6 +4164,7 @@
         "fsh",
         "heatedseats",
         "heater",
+        "kitchen",
         "leather",
         "parksensors",
         "roofbars",
@@ -4089,7 +4173,8 @@
       "notes": "It is with a heavy heart that we offer for sale our beloved 2010 VW California, a van we have owned and cherished for more than nine years.",
       "seller": "Hugh Ferguson",
       "seller_type": "private",
-      "added": "August 02, 2026"
+      "added": "August 02, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 63,
@@ -4146,6 +4231,7 @@
         "electricroof",
         "fsh",
         "heater",
+        "kitchen",
         "parksensors",
         "poptop",
         "tinted"
@@ -4153,7 +4239,8 @@
       "notes": "Volkswagen California T5.1 SE First registered 20/12/2013.",
       "seller": "Andy Nunn",
       "seller_type": "private",
-      "added": "July 15, 2026"
+      "added": "July 15, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 64,
@@ -4218,7 +4305,8 @@
       "notes": "Finished in Olympic Blue metallic, this California Beach has been carefully maintained and comes with an extensive service history.",
       "seller": "Kate Nolan",
       "seller_type": "private",
-      "added": "July 31, 2026"
+      "added": "July 31, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 65,
@@ -4284,7 +4372,8 @@
       "notes": "Cuckfield Motor Company are delighted to offer for sale this ever popular 2 Owner, VW California 2.0TDi SE 4x4.",
       "seller": "Paul Roberts",
       "seller_type": "private",
-      "added": "August 15, 2026"
+      "added": "August 15, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 66,
@@ -4353,7 +4442,8 @@
       "notes": "VW California camper VW California SE TDI 140 (Ocean) 2010 122,422 miles £29,000 1968cc Sandy Beige Manual transmission RH Drive We’ve had some truly fantastic times in our lovely van!",
       "seller": "Nicola Ellwood",
       "seller_type": "private",
-      "added": "June 22, 2026"
+      "added": "June 22, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 67,
@@ -4419,7 +4509,8 @@
       "notes": "",
       "seller": null,
       "seller_type": null,
-      "added": "July 06, 2026"
+      "added": "July 06, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 68,
@@ -4482,7 +4573,8 @@
       "notes": "Volkswagen California Beach T5.1 / 2015 / 7 Seater / DSG Automatic Purchased from Volkswagen in 2017, serviced and maintained by Main Dealers and Independent Specialists.",
       "seller": "Donovan Bradley",
       "seller_type": "private",
-      "added": "July 04, 2026"
+      "added": "July 04, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 69,
@@ -4540,7 +4632,6 @@
         "euro6",
         "fsh",
         "heater",
-        "kitchen",
         "ledlights",
         "parksensors",
         "poptop",
@@ -4551,7 +4642,8 @@
       "notes": "2016 VW CALIFORNIA BEACH 2.0 TDIDSG AUTOMATIC 135,600 MILES, £ 26500 FULL SERVICE HISTORY DSG REPLACED @ 115 K INVOICE AVAILABLE .LAST SERVICED APRIL 26, 2026 MOT UNTIL JANUARY 2027 ULEZ COMPLIANT.",
       "seller": "Joan Donnelly",
       "seller_type": "private",
-      "added": "August 23, 2026"
+      "added": "August 23, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 70,
@@ -4608,12 +4700,14 @@
         "fsh",
         "heatedseats",
         "heater",
+        "kitchen",
         "parksensors"
       ],
       "notes": "Needs a new Cam belt, Air conditioning needs re-gassing and it has a couple of small dents.",
       "seller": "Trevor Tabbanor",
       "seller_type": "private",
-      "added": "July 29, 2026"
+      "added": "July 29, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 71,
@@ -4676,7 +4770,8 @@
       "notes": "Genuine factory-built Volkswagen California Beach T5.1 in Deep Black Pearl.",
       "seller": "Mike Harmer",
       "seller_type": "private",
-      "added": "August 09, 2026"
+      "added": "August 09, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 72,
@@ -4738,7 +4833,8 @@
       "notes": "Reluctant sale of our much loved and well cared for high spec late 2010 Volkswagen California T5.1 SE, finished in the highly desirable Grey Metallic and powered by the soughtafter 140bhp manual engine.",
       "seller": "Ken Blogg",
       "seller_type": "private",
-      "added": "July 02, 2026"
+      "added": "July 02, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 73,
@@ -4791,6 +4887,7 @@
         "centrallocking",
         "cruise",
         "heater",
+        "kitchen",
         "leather",
         "parksensors",
         "reversecam",
@@ -4799,7 +4896,8 @@
       "notes": "",
       "seller": "Oscar Williams",
       "seller_type": "private",
-      "added": "July 06, 2026"
+      "added": "July 06, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 74,
@@ -4860,7 +4958,8 @@
       "notes": "Much loved ,cherished and original family California SE in our ownership past 12 years.",
       "seller": "David Pearce",
       "seller_type": "private",
-      "added": "August 06, 2026"
+      "added": "August 06, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 75,
@@ -4914,6 +5013,7 @@
         "centrallocking",
         "fsh",
         "heater",
+        "kitchen",
         "parksensors",
         "satnav",
         "towbar"
@@ -4921,7 +5021,8 @@
       "notes": "FOR SALE · VW T5 CALIFORNIA SAY HI TO “KUSKUS” 👋 A very well looked-after early T5 California Auto (registered 25/01/2008) with the strong 5-cylinder engine and just over 100,000 miles.",
       "seller": "Matt Stanley-Webb",
       "seller_type": "private",
-      "added": "August 04, 2026"
+      "added": "August 04, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 76,
@@ -4983,7 +5084,8 @@
       "notes": "Hills Prestige are delighted to offer this VOLKSWAGEN CALIFORNIA SE, finished in Silver Metallic having covered only 70,500 Miles from new Only 2 Owners and presented in Great condition throughout.",
       "seller": "Andrew Hill",
       "seller_type": "private",
-      "added": "August 19, 2026"
+      "added": "August 19, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 77,
@@ -5024,7 +5126,8 @@
       "notes": "Cuckfield Motor Company Ltd is a family run business FCA approved dealer established for over 20 years, With 30 years experience in the motor trade.",
       "seller": "Paul Roberts",
       "seller_type": "private",
-      "added": "June 24, 2026"
+      "added": "June 24, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 78,
@@ -5057,7 +5160,8 @@
       "notes": "2018 onwards T6 & T6.1 Cali Oceans/Beach/Surf/Coast considered.",
       "seller": "Sam Braithwaite",
       "seller_type": "private",
-      "added": "June 22, 2026"
+      "added": "June 22, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 79,
@@ -5086,11 +5190,14 @@
       "thumbs": [
         "https://vwcaliforniaclub.com/classifieds/wp-content/uploads/2026/08/IMG_5564-3-1-300x225.jpg"
       ],
-      "features": [],
+      "features": [
+        "kitchen"
+      ],
       "notes": "2018 onwards T6 & T6.1 Cali Oceans/Beach/Surf/Coast considered.",
       "seller": "Sam Braithwaite",
       "seller_type": "private",
-      "added": "August 22, 2026"
+      "added": "August 22, 2026",
+      "first_seen": "2026-08-25"
     },
     {
       "id": 80,
@@ -5132,7 +5239,8 @@
       "notes": "Comfortz Cali Hire We are based at junction 29a just off the M1 in Derbyshire 2019 CALIFORNIA OCEAN AUTOMATIC DSG The Campervan The VW California Ocean camper van can sleep four people as standard.",
       "seller": "Nick Wilmot",
       "seller_type": "private",
-      "added": "May 29, 2026"
+      "added": "May 29, 2026",
+      "first_seen": "2026-08-25"
     }
   ]
 }
