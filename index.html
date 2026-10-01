@@ -334,9 +334,14 @@ fetch('vans.json',{cache:'no-store'})
       'Push both files to GitHub Pages, or run <span class="mono">python -m http.server</span> in this folder and open localhost:8000.</p></div>';
   });
 
+// The T4 arrived in 1990 — nothing older than that can be a California.
+const T4_FIRST_YEAR = 1990;
+
 function init(d){
   DATA=d;
-  const v=d.vans;
+  // Ranges must ignore unrankable adverts: Math.min(..., null) is 0, and a zero
+  // floor silently flattens every score on that axis.
+  const v=d.vans.filter(x=>x.miles!==null && x.year!==null && x.price!==null);
   RANGE.miles=[Math.min(...v.map(x=>x.miles)), Math.max(...v.map(x=>x.miles))];
   RANGE.year =[Math.min(...v.map(x=>x.year )), Math.max(...v.map(x=>x.year ))];
   RANGE.price=[Math.min(...v.map(x=>x.price)), Math.max(...v.map(x=>x.price))];
@@ -346,7 +351,7 @@ function init(d){
   LIMITS={
     maxMiles: clamp(100000, RANGE.miles[0], RANGE.miles[1]),
     maxPrice: clamp(35000,  RANGE.price[0], RANGE.price[1]),
-    minYear:  RANGE.year[0]
+    minYear:  T4_FIRST_YEAR
   };
 
   $('#meta').innerHTML='Scanned '+d.scanned+' · '+v.length+' adverts · <a href="'+d.source+'" target="_blank" rel="noopener">open the classifieds</a>';
@@ -373,7 +378,7 @@ function buildLimits(){
   const rows=[
     ['maxPrice','Price at most', RANGE.price[0], RANGE.price[1], 250, gbp],
     ['maxMiles','Mileage at most', RANGE.miles[0], RANGE.miles[1], 1000, mi],
-    ['minYear','Year from', RANGE.year[0], RANGE.yearTop, 1, String]
+    ['minYear','Year from', T4_FIRST_YEAR, RANGE.yearTop, 1, String]
   ];
   $('#limits').innerHTML = rows.map(([k,label,min,max,step])=>
     '<div class="slider"><div class="lab"><b>'+label+'</b><span class="val" id="lv-'+k+'"></span></div>'+
